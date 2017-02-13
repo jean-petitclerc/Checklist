@@ -1,17 +1,19 @@
-from flask import Flask, request
+from flask import Flask, request, render_template
 from flask_script import Manager
+from flask_bootstrap import Bootstrap
 
 app = Flask(__name__)
 manager = Manager(app)
+bootstrap = Bootstrap(app)
 
 @app.route('/')
 def index():
-    return '<H1>Hello World!</H1>'
+    return render_template('index.html')
 
 @app.route('/user/<name>')
 def user(name):
     user_agent = request.headers.get('User-Agent')
-    return '<H1>Hello, %s!</H1><p>Your browser is %s.</p>' % (name, user_agent)
+    return render_template ('user.html', name=name, browser=user_agent)
 
 if __name__ == '__main__':
     manager.run()
