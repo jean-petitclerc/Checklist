@@ -5,6 +5,7 @@
         <h1>Liste des checklists</h1>
     </div>
     <p>
+        {% if checklists %}
         <table class="table table-bordered">
             <thead>
                 <tr>
@@ -28,5 +29,11 @@
                 {% endfor %}
             </tbody>
         </table>
+        {% else %}
+            <em>Il n'y a pas de checklist dans la base de données</em>
+            <p>
+                Cliquer&nbsp<a href="{{ url_for('add_checklist') }}">ici</a>&nbsp pour en ajouter une.
+            </p>
+        {% endif %}
 </div>
 {% endblock %}

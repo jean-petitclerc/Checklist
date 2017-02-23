@@ -7,5 +7,6 @@
         <h1>Ajouter une Nouvelle Checklist</h1>
     </div>
     {{ wtf.quick_form(form) }}
+    <input class="btn btn-default" type="submit" value="Annuler" onclick="window.open('{{ url_for('list_checklists') }}','_self')" />
 </div>
 {% endblock %}
