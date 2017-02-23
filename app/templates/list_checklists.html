@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block page_content %}
+<div class="container">
+    <div class="page-header">
+        <h1>Liste des checklists</h1>
+    </div>
+    <p>
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Nom</th>
+                    <th>Créé par</th>
+                    <th>Créé le</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for row in checklists %}
+                    <tr>
+                        <td><a href="{{ url_for('show_checklist', checklist_id=row['checklist_id']) }}">{{ row['checklist_name'] }}</a></td>
+                        <td>{{ row['audit_crt_user'] }}</td>
+                        <td>{{ row['audit_crt_ts'] }}</td>
+                    </tr>
+
+                {% else %}
+                    <tr>
+                        <td><em>Il n'y a pas de checklist dans la base de données</em></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+</div>
+{% endblock %}

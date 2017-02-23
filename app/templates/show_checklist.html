@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+{% block page_content %}
+<div class="container">
+    <div class="page-header">
+        <h1>Checklist: {{ name }}</h1>
+    </div>
+    Description:
+    <p>{{ desc }}</p>
+    <p>Ajouté par: {{ crt_user }} le {{ crt_ts }}</p>
+    <p><a href="{{ url_for('list_checklists') }}">Retour à la liste</a></p>
+</div>
+{% endblock %}
