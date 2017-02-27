@@ -44,6 +44,11 @@ class AddChecklistForm(FlaskForm):
     submit = SubmitField('Ajouter')
 
 
+# Formulaire pour confirmer la suppression d'une checklist
+class DelChecklistForm(FlaskForm):
+    submit = SubmitField('Supprimer')
+
+
 # This creates the database connection for each request
 @app.before_request
 def before_request():
@@ -178,6 +183,29 @@ def add_checklist():
             flash('Une erreur de base de données est survenue.')
             abort(500)
     return render_template('add_checklist.html', form=form)
+
+
+@app.route('/del_checklist/<int:checklist_id>', methods=['GET','POST'])
+def del_checklist(checklist_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+    form = DelChecklistForm()
+    if form.validate_on_submit():
+        app.logger.debug('Deleting a checklist')
+    else:
+        row = db_query(
+            '''
+            select checklist_name
+              from tchecklist
+             where checklist_id = ?
+            ''',
+            [checklist_id], one=True)
+        if row:
+            return render_template('del_checklist.html', form=form, name=row[0])
+        else:
+            flash("L'information n'a pas pu être retrouvée.")
+            return redirect(url_for('list_checklists'))
+
 
 
 @app.route('/show_checklist/<int:checklist_id>')
