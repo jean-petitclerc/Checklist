@@ -23,6 +23,7 @@ CREATE TABLE tchecklist (
     audit_crt_user text      not null default '',
     audit_crt_ts   timestamp not null,
     audit_upd_user text,
-    audit_upd_ts   timestamp
+    audit_upd_ts   timestamp,
+    deleted_ind    char(1)   not null default 'N'
 );
 create index checklist_x1 on tchecklist(checklist_name, checklist_id);

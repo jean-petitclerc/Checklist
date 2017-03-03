@@ -10,11 +10,12 @@
     <form class="form" method="post" role="form">
         {{ form.hidden_tag() }}
         {{ wtf.form_errors(form, hiddens="only") }}
-        <p>
+        <h4>
             <em>Voulez-vous vraiment supprimer cette checklist?</em>
-            Checklist: {{ name }}
-
-        </p>
+            <br>
+                Checklist: {{ name }}
+            </br>
+        </h4>
         <input class="btn btn-default" id="submit" name="submit" type="submit" value="Supprimer">
         <a href="{{ url_for('list_checklists') }}" class="btn btn-default">Annuler</a>
     </form>

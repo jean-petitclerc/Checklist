@@ -44,6 +44,13 @@ class AddChecklistForm(FlaskForm):
     submit = SubmitField('Ajouter')
 
 
+# Formulaire d'ajout d'une checklist
+class UpdChecklistForm(FlaskForm):
+    checklist_name = StringField('Nom de la checklist')
+    checklist_desc = TextAreaField('Description')
+    submit = SubmitField('Modifier')
+
+
 # Formulaire pour confirmer la suppression d'une checklist
 class DelChecklistForm(FlaskForm):
     submit = SubmitField('Supprimer')
@@ -159,7 +166,13 @@ def register():
 def list_checklists():
     if not logged_in():
         return redirect(url_for('login'))
-    cur = g.db.execute('select checklist_id, checklist_name, audit_crt_user, audit_crt_ts from tchecklist order by checklist_name')
+    cur = g.db.execute(
+        '''
+        select checklist_id, checklist_name, audit_crt_user, audit_crt_ts
+          from tchecklist
+         where deleted_ind = 'N'
+         order by checklist_name
+        ''')
     checklists = [dict(checklist_id=row[0], checklist_name=row[1], audit_crt_user=row[2], audit_crt_ts=row[3]) for row in cur.fetchall()]
     for x in checklists:
         app.logger.debug(x['checklist_name'])
@@ -192,6 +205,11 @@ def del_checklist(checklist_id):
     form = DelChecklistForm()
     if form.validate_on_submit():
         app.logger.debug('Deleting a checklist')
+        if db_del_checklist(checklist_id):
+            flash("La checklist a été effacée.")
+        else:
+            flash("Quelque chose n'a pas fonctionné.")
+        return redirect(url_for('list_checklists'))
     else:
         row = db_query(
             '''
@@ -207,6 +225,36 @@ def del_checklist(checklist_id):
             return redirect(url_for('list_checklists'))
 
 
+@app.route('/upd_checklist/<int:checklist_id>', methods=['GET','POST'])
+def upd_checklist(checklist_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+    form = UpdChecklistForm()
+    if form.validate_on_submit():
+        app.logger.debug('Updating a checklist')
+        checklist_name = form.checklist_name.data
+        checklist_desc = form.checklist_desc.data
+        if db_upd_checklist(checklist_id, checklist_name, checklist_desc):
+            flash("La checklist a été modifiée.")
+        else:
+            flash("Quelque chose n'a pas fonctionné.")
+        return redirect(url_for('list_checklists'))
+    else:
+        row = db_query(
+            '''
+            select checklist_name, checklist_desc
+              from tchecklist
+             where checklist_id = ?
+            ''',
+            [checklist_id], one=True)
+        if row:
+            form.checklist_name.data = row[0]
+            form.checklist_desc.data = row[1]
+            return render_template("upd_checklist.html", form=form, name=row[0], desc=row[1])
+        else:
+            flash("L'information n'a pas pu être retrouvée.")
+            return redirect(url_for('list_checklists'))
+
 
 @app.route('/show_checklist/<int:checklist_id>')
 def show_checklist(checklist_id):
@@ -220,7 +268,8 @@ def show_checklist(checklist_id):
         ''',
         [checklist_id], one=True)
     if row:
-        return render_template("show_checklist.html", name=row[0], desc=row[1], crt_user=row[2], crt_ts=row[3])
+        return render_template("show_checklist.html", name=row[0], desc=row[1], crt_user=row[2], crt_ts=row[3],
+                               upd_user=row[4], upd_ts=row[5])
     else:
         flash("L'information n'a pas pu être retrouvée.")
         return redirect(url_for('list_checklists'))
@@ -309,6 +358,45 @@ def db_add_checklist(checklist_name, checklist_desc):
         sth.execute(insert, [checklist_name, checklist_desc, audit_user, datetime.now()])
         g.db.commit()
         sth.close()
+    except Exception as e:
+        app.logger.error('DB Error' + e.__str__())
+        return False
+    return True
+
+
+def db_del_checklist(checklist_id):
+    audit_user = session.get('user_email', None)
+    update = '''
+    update tchecklist
+       set deleted_ind = 'Y'
+          ,audit_upd_user = ?
+          ,audit_upd_ts   = ?
+     where checklist_id = ?
+    '''
+    try:
+        sth = g.db.cursor()
+        sth.execute(update, [audit_user, datetime.now(), checklist_id])
+        g.db.commit()
+    except Exception as e:
+        app.logger.error('DB Error' + e.__str__())
+        return False
+    return True
+
+
+def db_upd_checklist(checklist_id, checklist_name, checklist_desc):
+    audit_user = session.get('user_email', None)
+    update = '''
+    update tchecklist
+       set checklist_name = ?
+          ,checklist_desc = ?
+          ,audit_upd_user = ?
+          ,audit_upd_ts   = ?
+     where checklist_id = ?
+    '''
+    try:
+        sth = g.db.cursor()
+        sth.execute(update, [checklist_name, checklist_desc, audit_user, datetime.now(), checklist_id])
+        g.db.commit()
     except Exception as e:
         app.logger.error('DB Error' + e.__str__())
         return False
