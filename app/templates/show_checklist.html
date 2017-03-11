@@ -4,8 +4,26 @@
     <div class="page-header">
         <h1>Checklist: {{ name }}</h1>
     </div>
-    Description:
-    <p>{{ desc }}</p>
+
+    <div class = "panel panel-primary">
+        <div class = "panel-heading">
+            <h3 class = "panel-title">{{ name }}</h3>
+        </div>
+
+        <div class = "panel-body">
+            {{ desc }}
+        </div>
+    </div>
+    {% for section in sections %}
+        <p>Section: {{ section['section_id'] }}</p>
+        {% for step in section['steps'] %}
+            <p>Step: {{ step['step_short'] }}</p>
+        {% else %}
+            <p>Pas de step dans cette section</p>
+        {% endfor %}
+    {% else %}
+        <p>Pas de section.</p>
+    {% endfor %}
     <p>Ajouté par: {{ crt_user }} le {{ crt_ts }}</p>
     {% if upd_user %}
         <p>Modifié par: {{ upd_user }} le {{ upd_ts }}</p>

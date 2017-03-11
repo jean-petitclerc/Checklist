@@ -268,8 +268,43 @@ def show_checklist(checklist_id):
         ''',
         [checklist_id], one=True)
     if row:
-        return render_template("show_checklist.html", name=row[0], desc=row[1], crt_user=row[2], crt_ts=row[3],
-                               upd_user=row[4], upd_ts=row[5])
+        app.logger.debug(type(row))
+        checklist_name = row[0]
+        checklist_desc = row[1]
+        audit_crt_user = row[2]
+        audit_crt_ts = row[3]
+        audit_upd_user = row[4]
+        audit_upd_ts = row[5]
+        cur_section = g.db.execute(
+            '''
+            select section_id, section_name, section_detail
+              from tcl_section
+             where checklist_id = ?
+             order by section_seq
+            ''',
+            (checklist_id,))
+        sections = [dict(section_id=row[0], section_name=row[1], section_detail=row[2])
+                    for row in cur_section.fetchall()]
+        for section in sections:
+            section_id = section['section_id']
+            app.logger.debug('for section in sections: ' + str(section_id) + section['section_name'])
+            cur_step = g.db.execute(
+                '''
+                select step_id, step_short, step_detail
+                  from tcl_step
+                 where checklist_id = ?
+                   and section_id = ?
+                   and deleted_ind = 'N'
+                 order by step_seq
+                ''',
+                (checklist_id, section_id,))
+            steps = [dict(step_id=row[0], step_short=row[1], step_detail=row[2]) for row in cur_step.fetchall()]
+            for step in steps:
+                app.logger.debug('    for step in steps: ' + step['step_short'])
+            section['steps'] = steps
+        return render_template("show_checklist.html", name=checklist_name, desc=checklist_desc, crt_user=audit_crt_user,
+                               crt_ts=audit_crt_ts, upd_user=audit_upd_user, upd_ts=audit_upd_ts, sections=sections)
+
     else:
         flash("L'information n'a pas pu être retrouvée.")
         return redirect(url_for('list_checklists'))
