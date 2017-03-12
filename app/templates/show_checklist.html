@@ -7,7 +7,7 @@
 
     <div class = "panel panel-primary">
         <div class = "panel-heading">
-            <h3 class = "panel-title">{{ name }}</h3>
+            <h2 class = "panel-title">{{ name }}</h2>
         </div>
 
         <div class = "panel-body">
@@ -15,9 +15,16 @@
         </div>
     </div>
     {% for section in sections %}
-        <p>Section: {{ section['section_id'] }}</p>
+        <h2>Section: {{ section['section_id'] }}</h2>
         {% for step in section['steps'] %}
-            <p>Step: {{ step['step_short'] }}</p>
+            <div class="panel panel-primary">
+                <div class = "panel-heading">
+                    <h5 class = "panel-title">Step: {{ step['step_short'] }}</h5>
+                </div>
+                <div class = "panel-body">
+                    {{ step['step_detail'] }}
+                </div>
+            </div>
         {% else %}
             <p>Pas de step dans cette section</p>
         {% endfor %}

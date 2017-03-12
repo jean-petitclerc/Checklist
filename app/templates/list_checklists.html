@@ -12,8 +12,8 @@
                     <th>Nom</th>
                     <th>Créé par</th>
                     <th>Créé le</th>
-                    <th>Modifier</th>
-                    <th>Supprimer</th>
+                    <th class="text-center">Modifier</th>
+                    <th class="text-center">Supprimer</th>
                 </tr>
             </thead>
             <tbody>
@@ -22,12 +22,10 @@
                         <td><a href="{{ url_for('show_checklist', checklist_id=row['checklist_id']) }}">{{ row['checklist_name'] }}</a></td>
                         <td>{{ row['audit_crt_user'] }}</td>
                         <td>{{ row['audit_crt_ts'] }}</td>
-                        <td><a href="{{ url_for('upd_checklist', checklist_id=row['checklist_id']) }}" class="btn btn-primary btn-xs" data-title="Modifier"><span class="glyphicon glyphicon-pencil"></span></a></td>
-                        <td><a href="{{ url_for('del_checklist', checklist_id=row['checklist_id']) }}" class="btn btn-danger btn-xs" data-title="Supprimer"><span class="glyphicon glyphicon-trash"></span></a></td>
-                    </tr>
-                {% else %}
-                    <tr>
-                        <td><em>Il n'y a pas de checklist dans la base de données</em></td>
+                        <td class="text-center"><a href="{{ url_for('upd_checklist', checklist_id=row['checklist_id']) }}"
+                               class="btn btn-primary btn-xs" data-title="Modifier"><span class="glyphicon glyphicon-pencil"></span></a></td>
+                        <td class="text-center"><a href="{{ url_for('del_checklist', checklist_id=row['checklist_id']) }}"
+                               class="btn btn-danger btn-xs" data-title="Supprimer"><span class="glyphicon glyphicon-trash"></span></a></td>
                     </tr>
                 {% endfor %}
             </tbody>

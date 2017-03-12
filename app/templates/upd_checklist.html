@@ -21,5 +21,37 @@
         <input class="btn btn-default" id="submit" name="submit" type="submit" value="Modifier">
         <a href="{{ url_for('list_checklists') }}" class="btn btn-default">Annuler</a>
     </form>
+    <p>
+        <h2>Sections</h2>
+        {% if sections %}
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Séquence</th>
+                        <th>Nom</th>
+                        <th class="text-center">Modifier</th>
+                        <th class="text-center">Supprimer</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for row in sections %}
+                        <tr>
+                            <td>{{ row['section_seq'] }}</td>
+                            <td>{{ row['section_name'] }}</td>
+                            <td class="text-center"><a href="{{ url_for('upd_section', section_id=row['section_id']) }}" class="btn btn-primary btn-xs" data-title="Modifier"> <span class="glyphicon glyphicon-pencil"></span></a></td>
+                            <td class="text-center"><a href="{{ url_for('del_section', section_id=row['section_id']) }}" class="btn btn-danger btn-xs"  data-title="Supprimer"><span class="glyphicon glyphicon-trash"></span></a></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <em>Il n'y a pas de section dans cette liste.</em>
+            <p>
+                Cliquer&nbsp<a href="{{ url_for('add_section') }}">ici</a>&nbsp pour en ajouter une.
+            </p>
+        {% endif %}
+    </p>
+    <a href="{{ url_for('add_section', checklist_id=checklist_id) }}" class="btn btn-default">Ajouter une section</a>
+    <a href="{{ url_for('list_checklists') }}" class="btn btn-default">Retour</a>
 </div>
 {% endblock %}

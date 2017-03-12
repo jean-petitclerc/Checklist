@@ -37,7 +37,7 @@ CREATE TABLE tcl_section(
     section_detail text    not null default '',
     deleted_ind    char(1) not null default 'N'
 );
-create unique index cl_section_x1 on tcl_section(checklist_id, section_seq);
+create index cl_section_x1 on tcl_section(checklist_id, section_seq);
 
 drop table if exists tcl_step;
 CREATE TABLE tcl_step(

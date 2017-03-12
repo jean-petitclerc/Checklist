@@ -2,8 +2,8 @@ from flask import Flask, session, redirect, url_for, request, render_template, f
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_bootstrap import Bootstrap
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, TextAreaField, BooleanField, SubmitField
-from wtforms.validators import DataRequired, Email, EqualTo  # Length, NumberRange
+from wtforms import StringField, PasswordField, TextAreaField, BooleanField, SubmitField, IntegerField
+from wtforms.validators import DataRequired, Email, EqualTo, NumberRange  # Length, NumberRange
 from flask_script import Manager
 from contextlib import closing
 from datetime import datetime
@@ -53,6 +53,19 @@ class UpdChecklistForm(FlaskForm):
 
 # Formulaire pour confirmer la suppression d'une checklist
 class DelChecklistForm(FlaskForm):
+    submit = SubmitField('Supprimer')
+
+
+# Formulaire pour ajouter une section à une checklist
+class AddSectionForm(FlaskForm):
+    section_seq = IntegerField('Séquence', validators=[NumberRange(min=0, message="Doit être un entier positif.")])
+    section_name = StringField('Nom de la section')
+    section_detail = TextAreaField('Description')
+    submit = SubmitField('Ajouter')
+
+
+# Formulaire pour confirmer la suppression d'une section
+class DelSectionForm(FlaskForm):
     submit = SubmitField('Supprimer')
 
 
@@ -250,7 +263,18 @@ def upd_checklist(checklist_id):
         if row:
             form.checklist_name.data = row[0]
             form.checklist_desc.data = row[1]
-            return render_template("upd_checklist.html", form=form, name=row[0], desc=row[1])
+            sections = g.db.execute(
+                '''
+                select section_id, section_seq, section_name
+                  from tcl_section
+                 where checklist_id = ?
+                   and deleted_ind = 'N'
+                ''', (checklist_id, )
+            )
+            sections = [dict(section_id=sect[0], section_seq=sect[1], section_name=sect[2])
+                             for sect in sections.fetchall()]
+            return render_template("upd_checklist.html", form=form, checklist_id=checklist_id,
+                                   name=row[0], desc=row[1], sections=sections)
         else:
             flash("L'information n'a pas pu être retrouvée.")
             return redirect(url_for('list_checklists'))
@@ -280,6 +304,7 @@ def show_checklist(checklist_id):
             select section_id, section_name, section_detail
               from tcl_section
              where checklist_id = ?
+               and deleted_ind = 'N'
              order by section_seq
             ''',
             (checklist_id,))
@@ -309,8 +334,72 @@ def show_checklist(checklist_id):
         flash("L'information n'a pas pu être retrouvée.")
         return redirect(url_for('list_checklists'))
 
-# Database functions
 
+@app.route('/add_section/<int:checklist_id>', methods=['GET', 'POST'])
+def add_section(checklist_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+    app.logger.debug('Entering add_section')
+    form = AddSectionForm()
+    if form.validate_on_submit():
+        app.logger.debug('Inserting a new section')
+        section_seq = request.form['section_seq']
+        section_name = request.form['section_name']
+        section_detail = request.form['section_detail']
+        if db_add_section(checklist_id, section_seq, section_name, section_detail):
+            flash('La nouvelle section est ajoutée.')
+            return redirect(url_for('upd_checklist', checklist_id=checklist_id))
+        else:
+            flash('Une erreur de base de données est survenue.')
+            abort(500)
+    return render_template('add_section.html', form=form, checklist_id=checklist_id)
+
+
+@app.route('/upd_section/<int:section_id>', methods=['GET','POST'])
+def upd_section(section_id):
+    return
+
+
+@app.route('/del_section/<int:section_id>', methods=['GET','POST'])
+def del_section(section_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+    form = DelSectionForm()
+    if form.validate_on_submit():
+        app.logger.debug('Deleting a section')
+        row = db_query(
+            '''
+            select checklist_id from tcl_section
+             where section_id = ?
+             ''',
+            [section_id], one=True
+        )
+        if row:
+            checklist_id = row[0]
+            if db_del_section(section_id, checklist_id):
+                flash("La section a été effacée.")
+            else:
+                flash("Quelque chose n'a pas fonctionné.")
+            return redirect(url_for('upd_checklist', checklist_id=checklist_id))
+        else:
+            flash("L'information n'a pas pu être retrouvée dans la base de données.")
+            abort(500)
+    else:
+        row = db_query(
+            '''
+            select section_name, checklist_id
+              from tcl_section
+             where section_id = ?
+            ''',
+            [section_id], one=True)
+        if row:
+            return render_template('del_section.html', form=form, name=row[0], checklist_id=row[1])
+        else:
+            flash("L'information n'a pas pu être retrouvée.")
+            return redirect(url_for('list_checklists'))
+
+
+# Database functions
 
 # Connect to the database and return a db handle
 def connect_db():
@@ -436,6 +525,74 @@ def db_upd_checklist(checklist_id, checklist_name, checklist_desc):
         app.logger.error('DB Error' + e.__str__())
         return False
     return True
+
+
+def db_add_section(checklist_id, section_seq, section_name, section_detail):
+    insert = '''
+        insert into tcl_section(checklist_id, section_seq, section_name, section_detail)
+            values(?, ?, ?, ?)
+    '''
+    try:
+        sth = g.db.cursor()
+        sth.execute(insert, [checklist_id, section_seq, section_name, section_detail])
+        if db_renum_section(checklist_id):
+            g.db.commit()
+        else:
+            g.db.rollback()
+        sth.close()
+    except Exception as e:
+        app.logger.error('DB Error' + e.__str__())
+        return False
+    return True
+
+
+def db_del_section(section_id, checklist_id):
+    delete = '''
+    delete from tcl_section
+     where section_id = ?
+    '''
+    try:
+        sth = g.db.cursor()
+        sth.execute(delete, [section_id])
+        if db_renum_section(checklist_id):
+            g.db.commit()
+        else:
+            g.db.rollback()
+            return False
+    except Exception as e:
+        app.logger.error('DB Error' + e.__str__())
+        return False
+    return True
+
+
+def db_renum_section(checklist_id):
+    update = '''
+        update tcl_section set section_seq = ?
+         where section_id = ?
+    '''
+    try:
+        sth = g.db.cursor()
+        cur_sect = g.db.execute(
+            '''
+            select section_id
+              from tcl_section
+             where checklist_id = ?
+             order by section_seq
+            ''',
+            (checklist_id, ))
+        sections = [dict(section_id=row[0]) for row in cur_sect.fetchall()]
+        new_seq = 0
+        for section in sections:
+            section_id = section['section_id']
+            new_seq = new_seq + 10
+            sth.execute(update, [new_seq, section_id])
+        cur_sect.close()
+        sth.close()
+    except Exception as e:
+       app.logger.error('DB Error' + e.__str__())
+       return False
+    return True
+
 
 # Read the configurations
 app.config.from_pyfile('config/config.py')
