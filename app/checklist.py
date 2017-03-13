@@ -186,7 +186,8 @@ def list_checklists():
          where deleted_ind = 'N'
          order by checklist_name
         ''')
-    checklists = [dict(checklist_id=row[0], checklist_name=row[1], audit_crt_user=row[2], audit_crt_ts=row[3]) for row in cur.fetchall()]
+    checklists = [dict(checklist_id=row[0], checklist_name=row[1], audit_crt_user=row[2], audit_crt_ts=row[3])
+                  for row in cur.fetchall()]
     for x in checklists:
         app.logger.debug(x['checklist_name'])
     return render_template('list_checklists.html', checklists=checklists)
@@ -211,7 +212,7 @@ def add_checklist():
     return render_template('add_checklist.html', form=form)
 
 
-@app.route('/del_checklist/<int:checklist_id>', methods=['GET','POST'])
+@app.route('/del_checklist/<int:checklist_id>', methods=['GET', 'POST'])
 def del_checklist(checklist_id):
     if not logged_in():
         return redirect(url_for('login'))
@@ -238,7 +239,7 @@ def del_checklist(checklist_id):
             return redirect(url_for('list_checklists'))
 
 
-@app.route('/upd_checklist/<int:checklist_id>', methods=['GET','POST'])
+@app.route('/upd_checklist/<int:checklist_id>', methods=['GET', 'POST'])
 def upd_checklist(checklist_id):
     if not logged_in():
         return redirect(url_for('login'))
@@ -272,7 +273,7 @@ def upd_checklist(checklist_id):
                 ''', (checklist_id, )
             )
             sections = [dict(section_id=sect[0], section_seq=sect[1], section_name=sect[2])
-                             for sect in sections.fetchall()]
+                        for sect in sections.fetchall()]
             return render_template("upd_checklist.html", form=form, checklist_id=checklist_id,
                                    name=row[0], desc=row[1], sections=sections)
         else:
@@ -355,12 +356,12 @@ def add_section(checklist_id):
     return render_template('add_section.html', form=form, checklist_id=checklist_id)
 
 
-@app.route('/upd_section/<int:section_id>', methods=['GET','POST'])
+@app.route('/upd_section/<int:section_id>', methods=['GET', 'POST'])
 def upd_section(section_id):
     return
 
 
-@app.route('/del_section/<int:section_id>', methods=['GET','POST'])
+@app.route('/del_section/<int:section_id>', methods=['GET', 'POST'])
 def del_section(section_id):
     if not logged_in():
         return redirect(url_for('login'))
@@ -502,12 +503,12 @@ def db_add_checklist(checklist_name, checklist_desc):
 
 
 def db_del_checklist(checklist_id):
-    '''
+    """
     :param checklist_id:
     :return: True or False
     Les checklists sont logiquement supprimées seulement.
     La colonne deleted_ind est mise à Y pour la table des checklist, des sections et des steps.
-    '''
+    """
     audit_user = session.get('user_email', None)
     update = '''
     update tchecklist
@@ -616,13 +617,13 @@ def db_renum_section(checklist_id):
         new_seq = 0
         for section in sections:
             section_id = section['section_id']
-            new_seq = new_seq + 10
+            new_seq += 10
             sth.execute(update, [new_seq, section_id])
         cur_sect.close()
         sth.close()
     except Exception as e:
-       app.logger.error('DB Error' + e.__str__())
-       return False
+        app.logger.error('DB Error' + e.__str__())
+        return False
     return True
 
 
