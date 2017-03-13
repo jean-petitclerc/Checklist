@@ -49,7 +49,7 @@ CREATE TABLE tcl_step(
     step_detail    text    not null default '',
     deleted_ind    char(1) not null default 'N'
 );
-create unique index cl_step_x1 on tcl_step(checklist_id, section_id, step_seq);
+create index cl_step_x1 on tcl_step(checklist_id, section_id, step_seq);
 
 --
 insert into tcl_section values(1, 2, 10, 'section 1', 'pre-steps', 'N');

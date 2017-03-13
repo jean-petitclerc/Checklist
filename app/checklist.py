@@ -393,7 +393,20 @@ def del_section(section_id):
             ''',
             [section_id], one=True)
         if row:
-            return render_template('del_section.html', form=form, name=row[0], checklist_id=row[1])
+            section_name = row[0]
+            checklist_id = row[1]
+            app.logger.debug(section_name)
+            count = db_query(
+                '''
+                select count(*) from tcl_step
+                 where section_id = ?
+                ''', [section_id], one=True
+            )
+            app.logger.debug('Nombre de steps pour cette section: ' + str(count[0]))
+            if count[0] > 0:
+                flash("Cette section contient des étapes. Elle ne peut pas être supprimée.")
+                return redirect(url_for('upd_checklist', checklist_id=checklist_id))
+            return render_template('del_section.html', form=form, name=section_name, checklist_id=checklist_id)
         else:
             flash("L'information n'a pas pu être retrouvée.")
             return redirect(url_for('list_checklists'))
@@ -489,6 +502,12 @@ def db_add_checklist(checklist_name, checklist_desc):
 
 
 def db_del_checklist(checklist_id):
+    '''
+    :param checklist_id:
+    :return: True or False
+    Les checklists sont logiquement supprimées seulement.
+    La colonne deleted_ind est mise à Y pour la table des checklist, des sections et des steps.
+    '''
     audit_user = session.get('user_email', None)
     update = '''
     update tchecklist
@@ -497,9 +516,21 @@ def db_del_checklist(checklist_id):
           ,audit_upd_ts   = ?
      where checklist_id = ?
     '''
+    upd_sect = '''
+    update tcl_section
+       set deleted_ind = 'Y'
+     where checklist_id = ?
+    '''
+    upd_step = '''
+    update tcl_step
+       set deleted_ind = 'Y'
+     where checklist_id = ?
+    '''
     try:
         sth = g.db.cursor()
         sth.execute(update, [audit_user, datetime.now(), checklist_id])
+        sth.execute(upd_sect, [checklist_id])
+        sth.execute(upd_step, [checklist_id])
         g.db.commit()
     except Exception as e:
         app.logger.error('DB Error' + e.__str__())
@@ -577,6 +608,7 @@ def db_renum_section(checklist_id):
             select section_id
               from tcl_section
              where checklist_id = ?
+               and deleted_ind = 'N'
              order by section_seq
             ''',
             (checklist_id, ))
