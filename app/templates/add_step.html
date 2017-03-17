@@ -18,20 +18,23 @@
 {% block page_content %}
 <div class="container">
     <div class="page-header">
-        <h1>Ajouter une Nouvelle Checklist</h1>
+        <h1>Ajouter un Nouveau Step</h1>
     </div>
 
     <form class="form" method="post" role="form">
         {{ form.hidden_tag() }}
         {{ wtf.form_errors(form, hiddens="only") }}
         <div class="form-group ">
-            {{ render_field(form.checklist_name, class="form-control") }}
+            {{ render_field(form.step_seq, class="form-control") }}
         </div>
         <div class="form-group ">
-            {{ render_field(form.checklist_desc, class="form-control") }}
+            {{ render_field(form.step_short, class="form-control") }}
+        </div>
+        <div class="form-group ">
+            {{ render_field(form.step_detail, class="form-control") }}
         </div>
         <input class="btn btn-default" id="submit" name="submit" type="submit" value="Ajouter">
-        <a href="{{ url_for('list_checklists') }}" class="btn btn-default">Annuler</a>
+        <a href="{{ url_for('upd_section', section_id=section_id) }}" class="btn btn-default">Annuler</a>
     </form>
 </div>
 {% endblock %}

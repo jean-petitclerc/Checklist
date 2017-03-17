@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% macro render_field(field) %}
+    <div class="form-group">
+        {{ field.label(class="control-label") }}
+        {{ field(**kwargs)|safe }}
+        {% if field.errors %}
+            <ul class=errors>
+            {% for error in field.errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    </div>
+{% endmacro %}
+
+{% block page_content %}
+<div class="container">
+    <div class="page-header">
+        <h1>Modifier une Section</h1>
+    </div>
+
+    <form class="form" method="post" role="form">
+        {{ form.hidden_tag() }}
+        {{ wtf.form_errors(form, hiddens="only") }}
+        <div class="form-group">
+            {{ render_field(form.section_seq, class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ render_field(form.section_name, class="form-control") }}
+        </div>
+        <div class="form-group">
+            {{ render_field(form.section_detail, class="form-control") }}
+        </div>
+        <input class="btn btn-default" id="submit" name="submit" type="submit" value="Modifier">
+        <a href="{{ url_for('upd_checklist', checklist_id=checklist_id) }}" class="btn btn-default">Annuler</a>
+    </form>
+    <p>
+        <h2>Étapes</h2>
+        {% if steps %}
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Séquence</th>
+                        <th>Nom</th>
+                        <th class="text-center">Modifier</th>
+                        <th class="text-center">Supprimer</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for step in steps %}
+                        <tr>
+                            <td>{{ step['step_seq'] }}</td>
+                            <td>{{ step['step_short'] }}</td>
+                            <td class="text-center"><a href="{{ url_for('upd_step', step_id=step['step_id']) }}"
+                                                       class="btn btn-primary btn-xs" data-title="Modifier">
+                                <span class="glyphicon glyphicon-pencil"></span></a></td>
+                            <td class="text-center"><a href="{{ url_for('del_step', step_id=step['step_id']) }}"
+                                                       class="btn btn-danger btn-xs"  data-title="Supprimer">
+                                <span class="glyphicon glyphicon-trash"></span></a></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <em>Il n'y a pas d'étape dans cette section.</em>
+            <p>
+                Cliquer&nbsp<a href="{{ url_for('add_step') }}">ici</a>&nbsp pour en ajouter une.
+            </p>
+        {% endif %}
+    </p>
+    <a href="{{ url_for('add_step') }}" class="btn btn-default">Ajouter une étape</a>
+    <a href="{{ url_for('upd_checklist', checklist_id=checklist_id) }}" class="btn btn-default">Retour</a>
+</div>
+{% endblock %}

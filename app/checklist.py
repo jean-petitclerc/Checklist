@@ -64,6 +64,21 @@ class AddSectionForm(FlaskForm):
     submit = SubmitField('Ajouter')
 
 
+# Formulaire pour la mise à jour d'une section
+class UpdSectionForm(FlaskForm):
+    section_seq = IntegerField('Séquence', validators=[NumberRange(min=0, message="Doit être un entier positif.")])
+    section_name = StringField('Nom de la section')
+    section_detail = TextAreaField('Description')
+    submit = SubmitField('Modifier')
+
+
+# Formulaire pour ajouter une section à une checklist
+class AddStepForm(FlaskForm):
+    step_seq = IntegerField('Séquence', validators=[NumberRange(min=0, message="Doit être un entier positif.")])
+    step_short = StringField('Nom du step')
+    step_detail = TextAreaField('Description')
+    submit = SubmitField('Ajouter')
+
 # Formulaire pour confirmer la suppression d'une section
 class DelSectionForm(FlaskForm):
     submit = SubmitField('Supprimer')
@@ -243,6 +258,7 @@ def del_checklist(checklist_id):
 def upd_checklist(checklist_id):
     if not logged_in():
         return redirect(url_for('login'))
+    session['checklist_id'] = checklist_id
     form = UpdChecklistForm()
     if form.validate_on_submit():
         app.logger.debug('Updating a checklist')
@@ -336,10 +352,11 @@ def show_checklist(checklist_id):
         return redirect(url_for('list_checklists'))
 
 
-@app.route('/add_section/<int:checklist_id>', methods=['GET', 'POST'])
-def add_section(checklist_id):
+@app.route('/add_section', methods=['GET', 'POST'])
+def add_section():
     if not logged_in():
         return redirect(url_for('login'))
+    checklist_id = session['checklist_id']
     app.logger.debug('Entering add_section')
     form = AddSectionForm()
     if form.validate_on_submit():
@@ -358,44 +375,73 @@ def add_section(checklist_id):
 
 @app.route('/upd_section/<int:section_id>', methods=['GET', 'POST'])
 def upd_section(section_id):
-    return
+    if not logged_in():
+        return redirect(url_for('login'))
+    session['section_id'] = section_id
+    checklist_id = session['checklist_id']
+    form = UpdSectionForm()
+    if form.validate_on_submit():
+        app.logger.debug('Updating a section')
+        section_seq = form.section_seq.data
+        section_name = form.section_name.data
+        section_detail = form.section_detail.data
+        if db_upd_section(section_id, section_seq, section_name, section_detail):
+            flash("La section a été modifiée.")
+        else:
+            flash("Quelque chose n'a pas fonctionné.")
+        return redirect(url_for('upd_checklist', checklist_id=checklist_id))
+    else:
+        row = db_query(
+            '''
+            select section_seq, section_name, section_detail
+              from tcl_section
+             where section_id = ?
+            ''',
+            [section_id], one=True)
+        if row:
+            form.section_seq.data = row[0]
+            form.section_name.data = row[1]
+            form.section_detail.data = row[2]
+            steps = g.db.execute(
+                '''
+                select step_id, step_seq, step_short
+                  from tcl_step
+                 where section_id = ?
+                   and deleted_ind = 'N'
+                ''', (section_id, )
+            )
+            steps = [dict(step_id=step[0], step_seq=step[1], step_short=step[2])
+                        for step in steps.fetchall()]
+            return render_template("upd_section.html", form=form, checklist_id=checklist_id,
+                                   name=row[0], desc=row[1], steps=steps)
+        else:
+            flash("L'information n'a pas pu être retrouvée.")
+            return redirect(url_for('upd_checklist', checklist_id=checklist_id))
 
 
 @app.route('/del_section/<int:section_id>', methods=['GET', 'POST'])
 def del_section(section_id):
     if not logged_in():
         return redirect(url_for('login'))
+    checklist_id = session['checklist_id']
     form = DelSectionForm()
     if form.validate_on_submit():
         app.logger.debug('Deleting a section')
-        row = db_query(
-            '''
-            select checklist_id from tcl_section
-             where section_id = ?
-             ''',
-            [section_id], one=True
-        )
-        if row:
-            checklist_id = row[0]
-            if db_del_section(section_id, checklist_id):
-                flash("La section a été effacée.")
-            else:
-                flash("Quelque chose n'a pas fonctionné.")
-            return redirect(url_for('upd_checklist', checklist_id=checklist_id))
+        if db_del_section(section_id, checklist_id):
+            flash("La section a été effacée.")
         else:
-            flash("L'information n'a pas pu être retrouvée dans la base de données.")
-            abort(500)
+            flash("Quelque chose n'a pas fonctionné.")
+        return redirect(url_for('upd_checklist', checklist_id=checklist_id))
     else:
         row = db_query(
             '''
-            select section_name, checklist_id
+            select section_name
               from tcl_section
              where section_id = ?
             ''',
             [section_id], one=True)
         if row:
             section_name = row[0]
-            checklist_id = row[1]
             app.logger.debug(section_name)
             count = db_query(
                 '''
@@ -411,6 +457,38 @@ def del_section(section_id):
         else:
             flash("L'information n'a pas pu être retrouvée.")
             return redirect(url_for('list_checklists'))
+
+
+@app.route('/add_step', methods=['GET', 'POST'])
+def add_step(section_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+    checklist_id = session['checklist_id']
+    section_id = session['section_id']
+    app.logger.debug('Entering add_step')
+    form = AddStepForm()
+    if form.validate_on_submit():
+        app.logger.debug('Inserting a new step')
+        step_seq = request.form['step_seq']
+        step_short = request.form['step_short']
+        step_detail = request.form['step_detail']
+        if db_add_step(section_id, step_seq, step_short, step_detail):
+            flash('Le nouveau step est ajouté.')
+            return redirect(url_for('upd_section', checklist_id=checklist_id))
+        else:
+            flash('Une erreur de base de données est survenue.')
+            abort(500)
+    return render_template('add_step.html', form=form, checklist_id=checklist_id, section_id=section_id)
+
+
+@app.route('/del_step/<int:step_id>', methods=['GET', 'POST'])
+def del_step(step_id):
+    return
+
+
+@app.route('/upd_step/<int:step_id>', methods=['GET', 'POST'])
+def upd_step(step_id):
+    return
 
 
 # Database functions
@@ -597,6 +675,24 @@ def db_del_section(section_id, checklist_id):
     return True
 
 
+def db_upd_section(section_id, section_seq, section_name, section_detail):
+    update = '''
+    update tcl_section
+       set section_seq = ?
+          ,section_name = ?
+          ,section_detail = ?
+     where section_id = ?
+    '''
+    try:
+        sth = g.db.cursor()
+        sth.execute(update, [section_seq, section_name, section_detail, section_id])
+        g.db.commit()
+    except Exception as e:
+        app.logger.error('DB Error' + e.__str__())
+        return False
+    return True
+
+
 def db_renum_section(checklist_id):
     update = '''
         update tcl_section set section_seq = ?
@@ -620,6 +716,74 @@ def db_renum_section(checklist_id):
             new_seq += 10
             sth.execute(update, [new_seq, section_id])
         cur_sect.close()
+        sth.close()
+    except Exception as e:
+        app.logger.error('DB Error' + e.__str__())
+        return False
+    return True
+
+
+def db_add_step(checklist_id, section_id, step_seq, step_short, step_detail):
+    insert = '''
+        insert into tcl_step(checklist_id, section_id, step_seq, step_short, step_detail)
+            values(?, ?, ?, ?, ?)
+    '''
+    try:
+        sth = g.db.cursor()
+        sth.execute(insert, [checklist_id, section_id, step_seq, step_short, step_detail])
+        if db_renum_step(section_id):
+            g.db.commit()
+        else:
+            g.db.rollback()
+        sth.close()
+    except Exception as e:
+        app.logger.error('DB Error' + e.__str__())
+        return False
+    return True
+
+
+def db_del_step(step_id, section_id):
+    delete = '''
+    delete from tcl_step
+     where step_id = ?
+    '''
+    try:
+        sth = g.db.cursor()
+        sth.execute(delete, [step_id])
+        if db_renum_section(section_id):
+            g.db.commit()
+        else:
+            g.db.rollback()
+            return False
+    except Exception as e:
+        app.logger.error('DB Error' + e.__str__())
+        return False
+    return True
+
+
+def db_renum_step(section_id):
+    update = '''
+        update tcl_step set step_seq = ?
+         where step_id = ?
+    '''
+    try:
+        sth = g.db.cursor()
+        cur_step = g.db.execute(
+            '''
+            select step_id
+              from tcl_step
+             where section_id = ?
+               and deleted_ind = 'N'
+             order by step_seq
+            ''',
+            (section_id, ))
+        steps = [dict(step_id=row[0]) for row in cur_step.fetchall()]
+        new_seq = 0
+        for step in steps:
+            step_id = step['step_id']
+            new_seq += 10
+            sth.execute(update, [new_seq, step_id])
+        cur_step.close()
         sth.close()
     except Exception as e:
         app.logger.error('DB Error' + e.__str__())
