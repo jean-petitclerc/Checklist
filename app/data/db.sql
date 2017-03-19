@@ -51,6 +51,32 @@ CREATE TABLE tcl_step(
 );
 create index cl_step_x1 on tcl_step(checklist_id, section_id, step_seq);
 
+drop table if exists tcl_step;
+CREATE TABLE tcl_step(
+    step_id        integer primary key autoincrement,
+    checklist_id   integer not null,
+    section_id     integer not null,
+    step_seq       integer not null,
+    step_short     text    not null default '',
+    step_detail    text    default null,
+    step_code      text    default null,
+    step_user      text    default null,
+    deleted_ind    char(1) not null default 'N'
+);
+create index cl_step_x1 on tcl_step(checklist_id, section_id, step_seq);
+
+--
+alter table tcl_step rename to tcl_step_old;
+drop index cl_step_x1;
+
+create table ...
+
+insert into tcl_step (step_id, checklist_id, section_id, step_seq, step_short, step_detail, step_code,
+                      step_user, deleted_ind)
+       select step_id, checklist_id, section_id, step_seq, step_short, step_detail, step_code,
+              null, deleted_ind
+         from tcl_step_old;
+
 --
 insert into tcl_section values(1, 2, 10, 'section 1', 'pre-steps', 'N');
 insert into tcl_section values(2, 2, 20, 'section 2', 'main section', 'N');

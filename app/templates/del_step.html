@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block page_content %}
+<div class="container">
+    <div class="page-header">
+        <h1>Supprimer un Step</h1>
+    </div>
+
+    <form class="form" method="post" role="form">
+        {{ form.hidden_tag() }}
+        {{ wtf.form_errors(form, hiddens="only") }}
+        <h4>
+            <em>Voulez-vous vraiment supprimer ce step?</em>
+            <br>
+                Step: {{ name }}
+            </br>
+        </h4>
+        <input class="btn btn-default" id="submit" name="submit" type="submit" value="Supprimer">
+        <a href="{{ url_for('upd_section', section_id=section_id) }}" class="btn btn-default">Annuler</a>
+    </form>
+</div>
+{% endblock %}
