@@ -81,10 +81,20 @@ class DelSectionForm(FlaskForm):
 class AddStepForm(FlaskForm):
     step_seq = IntegerField('Séquence', validators=[NumberRange(min=0, message="Doit être un entier positif.")])
     step_short = StringField('Nom du step')
-    step_detail = TextAreaField('Description')
+    step_detail = TextAreaField('Explication')
+    step_user = StringField('Usager à utiliser pour ce step')
     step_code = TextAreaField('Code')
-    step_user = StringField('Usager')
     submit = SubmitField('Ajouter')
+
+
+# Formulaire pour la mise à jour d'une section
+class UpdStepForm(FlaskForm):
+    step_seq = IntegerField('Séquence', validators=[NumberRange(min=0, message="Doit être un entier positif.")])
+    step_short = StringField('Nom du step')
+    step_detail = TextAreaField('Explication')
+    step_user = StringField('Usager à utiliser pour ce step')
+    step_code = TextAreaField('Code')
+    submit = SubmitField('Modifier')
 
 
 # Formulaire pour confirmer la suppression d'une section
@@ -394,7 +404,7 @@ def upd_section(section_id):
         section_seq = form.section_seq.data
         section_name = form.section_name.data
         section_detail = form.section_detail.data
-        if db_upd_section(section_id, section_seq, section_name, section_detail):
+        if db_upd_section(section_id, section_seq, section_name, section_detail, checklist_id):
             flash("La section a été modifiée.")
         else:
             flash("Quelque chose n'a pas fonctionné.")
@@ -482,7 +492,9 @@ def add_step():
         step_seq = request.form['step_seq']
         step_short = request.form['step_short']
         step_detail = request.form['step_detail']
-        if db_add_step(checklist_id, section_id, step_seq, step_short, step_detail):
+        step_user = request.form['step_user']
+        step_code = request.form['step_code']
+        if db_add_step(checklist_id, section_id, step_seq, step_short, step_detail, step_user, step_code):
             flash('Le nouveau step est ajouté.')
             return redirect(url_for('upd_section', section_id=section_id))
         else:
@@ -522,7 +534,41 @@ def del_step(step_id):
 
 @app.route('/upd_step/<int:step_id>', methods=['GET', 'POST'])
 def upd_step(step_id):
-    return
+    if not logged_in():
+        return redirect(url_for('login'))
+    session['step_id'] = step_id
+    section_id = session['section_id']
+    form = UpdStepForm()
+    if form.validate_on_submit():
+        app.logger.debug('Updating a step')
+        step_seq = form.step_seq.data
+        step_short = form.step_short.data
+        step_detail = form.step_detail.data
+        step_user = form.step_user.data
+        step_code = form.step_code.data
+        if db_upd_step(step_id, step_seq, step_short, step_detail, step_user, step_code, section_id):
+            flash("Le step a été modifiée.")
+        else:
+            flash("Quelque chose n'a pas fonctionné.")
+        return redirect(url_for('upd_section', section_id=section_id))
+    else:
+        row = db_query(
+            '''
+            select step_seq, step_short, step_detail, step_user, step_code
+              from tcl_step
+             where step_id = ?
+            ''',
+            [step_id], one=True)
+        if row:
+            form.step_seq.data = row[0]
+            form.step_short.data = row[1]
+            form.step_detail.data = row[2]
+            form.step_user.data = row[3]
+            form.step_code.data = row[4]
+            return render_template("upd_step.html", form=form, section_id=section_id)
+        else:
+            flash("L'information n'a pas pu être retrouvée.")
+            return redirect(url_for('upd_section', section_id=section_id))
 
 
 # Database functions
@@ -703,7 +749,7 @@ def db_del_section(section_id, checklist_id):
     return True
 
 
-def db_upd_section(section_id, section_seq, section_name, section_detail):
+def db_upd_section(section_id, section_seq, section_name, section_detail, checklist_id):
     st_update = '''
     update tcl_section
        set section_seq = ?
@@ -714,7 +760,11 @@ def db_upd_section(section_id, section_seq, section_name, section_detail):
     try:
         sth = g.db.cursor()
         sth.execute(st_update, [section_seq, section_name, section_detail, section_id])
-        g.db.commit()
+        if db_renum_section(checklist_id):
+            g.db.commit()
+        else:
+            g.db.rollback()
+            return False
     except Exception as e:
         app.logger.error('DB Error' + e.__str__())
         return False
@@ -751,14 +801,14 @@ def db_renum_section(checklist_id):
     return True
 
 
-def db_add_step(checklist_id, section_id, step_seq, step_short, step_detail):
+def db_add_step(checklist_id, section_id, step_seq, step_short, step_detail, step_user, step_code):
     st_insert = '''
-        insert into tcl_step(checklist_id, section_id, step_seq, step_short, step_detail)
-            values(?, ?, ?, ?, ?)
+        insert into tcl_step(checklist_id, section_id, step_seq, step_short, step_detail, step_user, step_code)
+            values(?, ?, ?, ?, ?, ?, ?)
     '''
     try:
         sth = g.db.cursor()
-        sth.execute(st_insert, [checklist_id, section_id, step_seq, step_short, step_detail])
+        sth.execute(st_insert, [checklist_id, section_id, step_seq, step_short, step_detail, step_user, step_code])
         if db_renum_step(section_id):
             g.db.commit()
         else:
@@ -778,6 +828,30 @@ def db_del_step(step_id, section_id):
     try:
         sth = g.db.cursor()
         sth.execute(st_delete, [step_id])
+        if db_renum_step(section_id):
+            g.db.commit()
+        else:
+            g.db.rollback()
+            return False
+    except Exception as e:
+        app.logger.error('DB Error' + e.__str__())
+        return False
+    return True
+
+
+def db_upd_step(step_id, step_seq, step_short, step_detail, step_user, step_code, section_id):
+    st_update = '''
+    update tcl_step
+       set step_seq = ?
+          ,step_short = ?
+          ,step_detail = ?
+          ,step_user = ?
+          ,step_code = ?
+     where step_id = ?
+    '''
+    try:
+        sth = g.db.cursor()
+        sth.execute(st_update, [step_seq, step_short, step_detail, step_user, step_code, step_id])
         if db_renum_step(section_id):
             g.db.commit()
         else:

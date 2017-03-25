@@ -1,6 +1,11 @@
 {% extends "base.html" %}
 {% import "bootstrap/wtf.html" as wtf %}
 
+{% block scripts %}
+    <script src="{{ url_for('.static', filename='addText.js')"></script>
+    {{super()}}
+{% endblock %}
+
 {% macro render_field(field) %}
     <div class="form-group">
         {{ field.label(class="control-label") }}
@@ -18,7 +23,7 @@
 {% block page_content %}
 <div class="container">
     <div class="page-header">
-        <h1>Ajouter un Nouveau Step</h1>
+        <h1>Modifier un Step</h1>
     </div>
 
     <form class="form" method="post" role="form">
@@ -39,7 +44,7 @@
         <div class="form-group ">
             {{ render_field(form.step_code, class="form-control", rows="10", style="font-family:monospace;") }}
         </div>
-        <input class="btn btn-default" id="submit" name="submit" type="submit" value="Ajouter">
+        <input class="btn btn-default" id="submit" name="submit" type="submit" value="Modifier">
         <a href="{{ url_for('upd_section', section_id=section_id) }}" class="btn btn-default">Annuler</a>
     </form>
 </div>
