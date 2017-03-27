@@ -5,6 +5,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, TextAreaField, BooleanField, SubmitField, IntegerField
 from wtforms.validators import DataRequired, Email, EqualTo, NumberRange  # Length, NumberRange
 from flask_script import Manager
+from flask_sqlalchemy import SQLAlchemy
 from contextlib import closing
 from datetime import datetime
 import sqlite3
@@ -12,6 +13,33 @@ import sqlite3
 app = Flask(__name__)
 manager = Manager(app)
 bootstrap = Bootstrap(app)
+
+# Read the configurations
+app.config.from_pyfile('config/config.py')
+# print(app.config['DATABASE'])
+# print(app.config['SQLALCHEMY_DATABASE_URI'])
+
+db = SQLAlchemy(app)
+
+
+# Database Model
+class Admin_User(db.Model):
+    __tablename__ = 'tadmin_user'
+    user_id = db.Column(db.Integer(), primary_key=True, autoincrement=True)
+    first_name = db.Column(db.String(), nullable=False)
+    last_name = db.Column(db.String(), nullable=False)
+    user_email = db.Column(db.String(), nullable=False, unique=True)
+    user_pass = db.Column(db.String(), nullable=False)
+    activated = db.Column(db.Boolean(), nullable=False, default=True)
+
+    def __init__(self, first_name, last_name, user_email, user_pass):
+        self.first_name = first_name
+        self.last_name = last_name
+        self.user_email = user_email
+        self.user_pass = user_pass
+
+    def __repr__(self):
+        return '<user: {}>'.format(self.user_email)
 
 
 # Formulaire web pour l'écran de login
@@ -105,15 +133,16 @@ class DelStepForm(FlaskForm):
 # This creates the database connection for each request
 @app.before_request
 def before_request():
-    g.db = connect_db()
+    # g.dbh = connect_db()
+    return
 
 
 # This close the db connection at the end of the requests
 @app.teardown_request
 def teardown_request(exception):
-    db = getattr(g, 'db', None)
-    if db is not None:
-        db.close()
+    dbh = getattr(g, 'dbh', None)
+    if dbh is not None:
+        dbh.close()
 
 
 # Custom error pages
@@ -195,14 +224,9 @@ def register():
             flash('Cet usager existe déjà. Veuillez vous connecter.')
             return redirect(url_for('login'))
         else:
-            insert = '''
-            insert into tadmin_user(first_name, last_name, user_email, user_pass)
-              values(?, ?, ?, ?)
-            '''
-            cur = g.db.cursor()
-            cur.execute(insert, [first_name, last_name, user_email, user_pass])
-            g.db.commit()
-            cur.close()
+            user = Admin_User(first_name, last_name, user_email, user_pass)
+            db.session.add(user)
+            db.session.commit()
             flash('Come back when your login will be activated.')
             return redirect(url_for('index'))
     return render_template('register.html', form=form)
@@ -212,7 +236,7 @@ def register():
 def list_checklists():
     if not logged_in():
         return redirect(url_for('login'))
-    cur = g.db.execute(
+    cur = g.dbh.execute(
         '''
         select checklist_id, checklist_name, audit_crt_user, audit_crt_ts
           from tchecklist
@@ -298,7 +322,7 @@ def upd_checklist(checklist_id):
         if row:
             form.checklist_name.data = row[0]
             form.checklist_desc.data = row[1]
-            sections = g.db.execute(
+            sections = g.dbh.execute(
                 '''
                 select section_id, section_seq, section_name
                   from tcl_section
@@ -335,7 +359,7 @@ def show_checklist(checklist_id):
         audit_crt_ts = row[3]
         audit_upd_user = row[4]
         audit_upd_ts = row[5]
-        cur_section = g.db.execute(
+        cur_section = g.dbh.execute(
             '''
             select section_id, section_name, section_detail
               from tcl_section
@@ -349,7 +373,7 @@ def show_checklist(checklist_id):
         for section in sections:
             section_id = section['section_id']
             app.logger.debug('for section in sections: ' + str(section_id) + section['section_name'])
-            cur_step = g.db.execute(
+            cur_step = g.dbh.execute(
                 '''
                 select step_id, step_short, step_detail
                   from tcl_step
@@ -421,7 +445,7 @@ def upd_section(section_id):
             form.section_seq.data = row[0]
             form.section_name.data = row[1]
             form.section_detail.data = row[2]
-            steps = g.db.execute(
+            steps = g.dbh.execute(
                 '''
                 select step_id, step_seq, step_short
                   from tcl_step
@@ -581,15 +605,15 @@ def connect_db():
 
 # Utility function to create the database from the schema definition in db.sql
 def init_db():
-    with closing(connect_db()) as db:
+    with closing(connect_db()) as dbh:
         with app.open_resource('data/db.sql', mode='r') as f:
-            db.cursor().executescript(f.read())
-        db.commit()
+            dbh.cursor().executescript(f.read())
+        dbh.commit()
 
 
 # Execute a query
 def db_query(query, args=(), one=False):
-    cur = g.db.execute(query, args)
+    cur = g.dbh.execute(query, args)
     rv = cur.fetchall()
     cur.close()
     return (rv[0] if rv else None) if one else rv
@@ -597,8 +621,7 @@ def db_query(query, args=(), one=False):
 
 def user_exists(user_email):
     app.logger.debug('Entering user_exists with: ' + user_email)
-    user = db_query('select first_name from tadmin_user where user_email = ?',
-                    [user_email], one=True)
+    user = Admin_User.query.filter_by(user_email=user_email).first()
     if user is None:
         app.logger.debug('user_exists returns False')
         return False
@@ -609,20 +632,19 @@ def user_exists(user_email):
 
 # Validate if a user is defined in tadmin_user with the proper password.
 def db_validate_user(user_email, password):
-    row = db_query('''
-    select first_name, last_name, user_pass, activated from tadmin_user where user_email = ?
-    ''', [user_email], one=True)
-    if row is None:
+    user = Admin_User.query.filter_by(user_email=user_email).first()
+    if user is None:
         flash("L'usager n'existe pas.")
         return False
-    if row[3] != 'Y':
+
+    if not user.activated:
         flash("L'usager n'est pas activé.")
         return False
 
-    if check_password_hash(row[2], password):
-        session['user_email'] = user_email
-        session['first_name'] = row[0]
-        session['last_name'] = row[1]
+    if check_password_hash(user.user_pass, password):
+        session['user_email'] = user.user_email
+        session['first_name'] = user.first_name
+        session['last_name'] = user.last_name
         return True
     else:
         flash("Mauvais mot de passe!")
@@ -630,17 +652,13 @@ def db_validate_user(user_email, password):
 
 
 def change_password(user_email, new_password):
-    user_pass = generate_password_hash(new_password)
-    st_update = '''
-    update tadmin_user
-       set user_pass = ?
-     where user_email = ?
-    '''
-    cur = g.db.cursor()
-    cur.execute(st_update, [user_pass, user_email])
-    g.db.commit()
-    cur.close()
-    flash('Password changed.')
+    user = Admin_User.query.filter_by(user_email=user_email).first()
+    if user is None:
+        flash("Mot de passe inchangé. L'usager n'a pas été retrouvé.")
+    else:
+        user.user_pass = generate_password_hash(new_password)
+        db.session.commit()
+        flash("Mot de passe changé.")
 
 
 def db_add_checklist(checklist_name, checklist_desc):
@@ -650,9 +668,9 @@ def db_add_checklist(checklist_name, checklist_desc):
             values(?, ?, ?, ?)
     '''
     try:
-        sth = g.db.cursor()
+        sth = g.dbh.cursor()
         sth.execute(st_insert, [checklist_name, checklist_desc, audit_user, datetime.now()])
-        g.db.commit()
+        g.dbh.commit()
         sth.close()
     except Exception as e:
         app.logger.error('DB Error' + e.__str__())
@@ -680,11 +698,11 @@ def db_del_checklist(checklist_id):
      where checklist_id = ?
     '''
     try:
-        sth = g.db.cursor()
+        sth = g.dbh.cursor()
         sth.execute(st_update, [audit_user, datetime.now(), checklist_id])
         sth.execute(st_upd_sect, [checklist_id])
         sth.execute(st_upd_step, [checklist_id])
-        g.db.commit()
+        g.dbh.commit()
     except Exception as e:
         app.logger.error('DB Error' + e.__str__())
         return False
@@ -702,9 +720,9 @@ def db_upd_checklist(checklist_id, checklist_name, checklist_desc):
      where checklist_id = ?
     '''
     try:
-        sth = g.db.cursor()
+        sth = g.dbh.cursor()
         sth.execute(st_update, [checklist_name, checklist_desc, audit_user, datetime.now(), checklist_id])
-        g.db.commit()
+        g.dbh.commit()
     except Exception as e:
         app.logger.error('DB Error' + e.__str__())
         return False
@@ -717,12 +735,12 @@ def db_add_section(checklist_id, section_seq, section_name, section_detail):
             values(?, ?, ?, ?)
     '''
     try:
-        sth = g.db.cursor()
+        sth = g.dbh.cursor()
         sth.execute(st_insert, [checklist_id, section_seq, section_name, section_detail])
         if db_renum_section(checklist_id):
-            g.db.commit()
+            g.dbh.commit()
         else:
-            g.db.rollback()
+            g.dbh.rollback()
         sth.close()
     except Exception as e:
         app.logger.error('DB Error' + e.__str__())
@@ -736,12 +754,12 @@ def db_del_section(section_id, checklist_id):
      where section_id = ?
     '''
     try:
-        sth = g.db.cursor()
+        sth = g.dbh.cursor()
         sth.execute(st_delete, [section_id])
         if db_renum_section(checklist_id):
-            g.db.commit()
+            g.dbh.commit()
         else:
-            g.db.rollback()
+            g.dbh.rollback()
             return False
     except Exception as e:
         app.logger.error('DB Error' + e.__str__())
@@ -758,12 +776,12 @@ def db_upd_section(section_id, section_seq, section_name, section_detail, checkl
      where section_id = ?
     '''
     try:
-        sth = g.db.cursor()
+        sth = g.dbh.cursor()
         sth.execute(st_update, [section_seq, section_name, section_detail, section_id])
         if db_renum_section(checklist_id):
-            g.db.commit()
+            g.dbh.commit()
         else:
-            g.db.rollback()
+            g.dbh.rollback()
             return False
     except Exception as e:
         app.logger.error('DB Error' + e.__str__())
@@ -777,8 +795,8 @@ def db_renum_section(checklist_id):
          where section_id = ?
     '''
     try:
-        sth = g.db.cursor()
-        cur_sect = g.db.execute(
+        sth = g.dbh.cursor()
+        cur_sect = g.dbh.execute(
             '''
             select section_id
               from tcl_section
@@ -807,12 +825,12 @@ def db_add_step(checklist_id, section_id, step_seq, step_short, step_detail, ste
             values(?, ?, ?, ?, ?, ?, ?)
     '''
     try:
-        sth = g.db.cursor()
+        sth = g.dbh.cursor()
         sth.execute(st_insert, [checklist_id, section_id, step_seq, step_short, step_detail, step_user, step_code])
         if db_renum_step(section_id):
-            g.db.commit()
+            g.dbh.commit()
         else:
-            g.db.rollback()
+            g.dbh.rollback()
         sth.close()
     except Exception as e:
         app.logger.error('DB Error' + e.__str__())
@@ -826,12 +844,12 @@ def db_del_step(step_id, section_id):
      where step_id = ?
     '''
     try:
-        sth = g.db.cursor()
+        sth = g.dbh.cursor()
         sth.execute(st_delete, [step_id])
         if db_renum_step(section_id):
-            g.db.commit()
+            g.dbh.commit()
         else:
-            g.db.rollback()
+            g.dbh.rollback()
             return False
     except Exception as e:
         app.logger.error('DB Error' + e.__str__())
@@ -850,12 +868,12 @@ def db_upd_step(step_id, step_seq, step_short, step_detail, step_user, step_code
      where step_id = ?
     '''
     try:
-        sth = g.db.cursor()
+        sth = g.dbh.cursor()
         sth.execute(st_update, [step_seq, step_short, step_detail, step_user, step_code, step_id])
         if db_renum_step(section_id):
-            g.db.commit()
+            g.dbh.commit()
         else:
-            g.db.rollback()
+            g.dbh.rollback()
             return False
     except Exception as e:
         app.logger.error('DB Error' + e.__str__())
@@ -869,8 +887,8 @@ def db_renum_step(section_id):
          where step_id = ?
     '''
     try:
-        sth = g.db.cursor()
-        cur_step = g.db.execute(
+        sth = g.dbh.cursor()
+        cur_step = g.dbh.execute(
             '''
             select step_id
               from tcl_step
@@ -892,9 +910,6 @@ def db_renum_step(section_id):
         return False
     return True
 
-
-# Read the configurations
-app.config.from_pyfile('config/config.py')
 
 # Start the server for the application
 if __name__ == '__main__':

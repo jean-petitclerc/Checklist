@@ -3,3 +3,5 @@
 venv/
 instance/
 config.py
+data/*.db
+app/config/
