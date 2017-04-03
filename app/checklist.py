@@ -10,6 +10,13 @@ from contextlib import closing
 from datetime import datetime
 import sqlite3
 
+# TODO Categorie et sous-categorie
+# TODO Show checklist
+# TODO Liste de variables prédéfinies
+# TODO Copier les variables prédéfinies dans le code
+# TODO Code snippets
+# TODO Génération de checklists remplies
+
 app = Flask(__name__)
 manager = Manager(app)
 bootstrap = Bootstrap(app)
@@ -25,12 +32,12 @@ db = SQLAlchemy(app)
 # Database Model
 class Admin_User(db.Model):
     __tablename__ = 'tadmin_user'
-    user_id = db.Column(db.Integer(), primary_key=True, autoincrement=True)
-    first_name = db.Column(db.String(), nullable=False)
-    last_name = db.Column(db.String(), nullable=False)
-    user_email = db.Column(db.String(), nullable=False, unique=True)
-    user_pass = db.Column(db.String(), nullable=False)
-    activated = db.Column(db.Boolean(), nullable=False, default=True)
+    user_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    first_name = db.Column(db.String(30), nullable=False)
+    last_name = db.Column(db.String(30), nullable=False)
+    user_email = db.Column(db.String(80), nullable=False, unique=True)
+    user_pass = db.Column(db.String(100), nullable=False)
+    activated = db.Column(db.Boolean, nullable=False, default=True)
 
     def __init__(self, first_name, last_name, user_email, user_pass):
         self.first_name = first_name
@@ -40,6 +47,85 @@ class Admin_User(db.Model):
 
     def __repr__(self):
         return '<user: {}>'.format(self.user_email)
+
+
+class Checklist(db.Model):
+    __tablename__ = 'tchecklist'
+    checklist_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    checklist_name = db.Column(db.String(100), nullable=False)
+    checklist_desc = db.Column(db.Text, nullable=False, default='')
+    audit_crt_user = db.Column(db.String(80), nullable=False)
+    audit_crt_ts = db.Column(db.DateTime(), nullable=False)
+    audit_upd_user = db.Column(db.String(80), nullable=True)
+    audit_upd_ts = db.Column(db.DateTime(), nullable=True)
+    deleted_ind = db.Column(db.String(1), nullable=False, default='N')
+
+    def __init__(self, checklist_name, checklist_desc, audit_crt_user, audit_crt_ts):
+        self.checklist_name = checklist_name
+        self.checklist_desc = checklist_desc
+        self.audit_crt_user = audit_crt_user
+        self.audit_crt_ts = audit_crt_ts
+
+    def __repr__(self):
+        return '<checklist {}>'.format(self.checklist_name)
+
+
+class Section(db.Model):
+    __tablename__ = 'tcl_section'
+    section_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    checklist_id = db.Column(db.Integer)
+    section_seq = db.Column(db.Integer, nullable=False)
+    section_name = db.Column(db.String(100), nullable=False, default='')
+    section_detail = db.Column(db.Text, nullable=False, default='')
+    deleted_ind = db.Column(db.String(1), nullable=False, default='N')
+
+    def __init__(self, checklist_id, section_seq, section_name, section_detail):
+        self.checklist_id = checklist_id
+        self.section_seq = section_seq
+        self.section_name = section_name
+        self.section_detail = section_detail
+
+    def __repr__(self):
+        return '<section {}>'.format(self.section_name)
+
+
+class Step(db.Model):
+    __tablename__ = 'tcl_step'
+    step_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    checklist_id = db.Column(db.Integer, nullable=False)
+    section_id = db.Column(db.Integer)
+    step_seq = db.Column(db.Integer, nullable=False)
+    step_short = db.Column(db.String(100), nullable=False, default='')
+    step_detail = db.Column(db.Text, nullable=True)
+    step_user = db.Column(db.String(16), nullable=True)
+    step_code = db.Column(db.Text, nullable=True)
+    deleted_ind = db.Column(db.String(1), nullable=False, default='N')
+
+    def __init__(self, checklist_id, section_id, step_seq, step_short, step_detail, step_user, step_code):
+        self.checklist_id = checklist_id
+        self.section_id = section_id
+        self.step_seq = step_seq
+        self.step_short = step_short
+        self.step_detail = step_detail
+        self.step_user = step_user
+        self.step_code = step_code
+
+    def __repr__(self):
+        return '<step: {}>'.format(self.step_short)
+
+
+class Predef_vars(db.Model):
+    __tablename__ = 'tpredef_var'
+    var_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    var_name = db.Column(db.String(16), nullabale=False)
+    var_desc = db.Column(db.Text, nullable=True)
+
+    def __init__(self, var_name, var_desc):
+        self.var_name = var_name
+        self.var_desc = var_desc
+
+    def __repr__(self):
+        return '<var: {}>'.format(self.var_name)
 
 
 # Formulaire web pour l'écran de login
@@ -128,6 +214,13 @@ class UpdStepForm(FlaskForm):
 # Formulaire pour confirmer la suppression d'une section
 class DelStepForm(FlaskForm):
     submit = SubmitField('Supprimer')
+
+
+# Formulaire pour ajouter une variable
+class AddVarForm(FlaskForm):
+    var_name = StringField('Nom de la variable', validators=[DataRequired])
+    var_desc = TextAreaField('Description')
+    submit = SubmitField('Ajouter')
 
 
 # This creates the database connection for each request
@@ -236,17 +329,7 @@ def register():
 def list_checklists():
     if not logged_in():
         return redirect(url_for('login'))
-    cur = g.dbh.execute(
-        '''
-        select checklist_id, checklist_name, audit_crt_user, audit_crt_ts
-          from tchecklist
-         where deleted_ind = 'N'
-         order by checklist_name
-        ''')
-    checklists = [dict(checklist_id=row[0], checklist_name=row[1], audit_crt_user=row[2], audit_crt_ts=row[3])
-                  for row in cur.fetchall()]
-    for x in checklists:
-        app.logger.debug(x['checklist_name'])
+    checklists = Checklist.query.filter_by(deleted_ind='N').order_by(Checklist.checklist_name).all()
     return render_template('list_checklists.html', checklists=checklists)
 
 
@@ -282,15 +365,9 @@ def del_checklist(checklist_id):
             flash("Quelque chose n'a pas fonctionné.")
         return redirect(url_for('list_checklists'))
     else:
-        row = db_query(
-            '''
-            select checklist_name
-              from tchecklist
-             where checklist_id = ?
-            ''',
-            [checklist_id], one=True)
-        if row:
-            return render_template('del_checklist.html', form=form, name=row[0])
+        cl = Checklist.query.get(checklist_id)
+        if cl:
+            return render_template('del_checklist.html', form=form, name=cl.checklist_name)
         else:
             flash("L'information n'a pas pu être retrouvée.")
             return redirect(url_for('list_checklists'))
@@ -312,29 +389,14 @@ def upd_checklist(checklist_id):
             flash("Quelque chose n'a pas fonctionné.")
         return redirect(url_for('list_checklists'))
     else:
-        row = db_query(
-            '''
-            select checklist_name, checklist_desc
-              from tchecklist
-             where checklist_id = ?
-            ''',
-            [checklist_id], one=True)
-        if row:
-            form.checklist_name.data = row[0]
-            form.checklist_desc.data = row[1]
-            sections = g.dbh.execute(
-                '''
-                select section_id, section_seq, section_name
-                  from tcl_section
-                 where checklist_id = ?
-                   and deleted_ind = 'N'
-                  order by section_seq
-                ''', (checklist_id, )
-            )
-            sections = [dict(section_id=sect[0], section_seq=sect[1], section_name=sect[2])
-                        for sect in sections.fetchall()]
+        cl = Checklist.query.get(checklist_id)
+        if cl:
+            form.checklist_name.data = cl.checklist_name
+            form.checklist_desc.data = cl.checklist_desc
+            sections = Section.query.filter_by(checklist_id=checklist_id, deleted_ind='N') \
+                .order_by(Section.section_seq).all()
             return render_template("upd_checklist.html", form=form, checklist_id=checklist_id,
-                                   name=row[0], desc=row[1], sections=sections)
+                                   name=cl.checklist_name, desc=cl.checklist_desc, sections=sections)
         else:
             flash("L'information n'a pas pu être retrouvée.")
             return redirect(url_for('list_checklists'))
@@ -342,50 +404,26 @@ def upd_checklist(checklist_id):
 
 @app.route('/show_checklist/<int:checklist_id>')
 def show_checklist(checklist_id):
+    # TODO Review nested data structure and ORM calls
     if not logged_in():
         return redirect(url_for('login'))
-    row = db_query(
-        '''
-        select checklist_name, checklist_desc, audit_crt_user, audit_crt_ts, audit_upd_user, audit_upd_ts
-          from tchecklist
-         where checklist_id = ?
-        ''',
-        [checklist_id], one=True)
-    if row:
-        app.logger.debug(type(row))
-        checklist_name = row[0]
-        checklist_desc = row[1]
-        audit_crt_user = row[2]
-        audit_crt_ts = row[3]
-        audit_upd_user = row[4]
-        audit_upd_ts = row[5]
-        cur_section = g.dbh.execute(
-            '''
-            select section_id, section_name, section_detail
-              from tcl_section
-             where checklist_id = ?
-               and deleted_ind = 'N'
-             order by section_seq
-            ''',
-            (checklist_id,))
-        sections = [dict(section_id=row[0], section_name=row[1], section_detail=row[2])
-                    for row in cur_section.fetchall()]
+    cl = Checklist.query.get(checklist_id)
+    if cl:
+        checklist_name = cl.checklist_name
+        checklist_desc = cl.checklist_desc
+        audit_crt_user = cl.audit_crt_user
+        audit_crt_ts = cl.audit_crt_ts
+        audit_upd_user = cl.audit_upd_user
+        audit_upd_ts = cl.audit_upd_ts
+        sections = Section.query.filter_by(checklist_id=checklist_id,deleted_ind='N') \
+            .order_by(Section.section_seq).all()
+        # l_sections = [ [section_name, [step 1, step 2,...]], [section_name, [step 1, step 2, step 3,...]],...]
         for section in sections:
-            section_id = section['section_id']
+            section_id = section.section_id
+            section_name = section.section_name
             app.logger.debug('for section in sections: ' + str(section_id) + section['section_name'])
-            cur_step = g.dbh.execute(
-                '''
-                select step_id, step_short, step_detail
-                  from tcl_step
-                 where checklist_id = ?
-                   and section_id = ?
-                   and deleted_ind = 'N'
-                 order by step_seq
-                ''',
-                (checklist_id, section_id,))
-            steps = [dict(step_id=row[0], step_short=row[1], step_detail=row[2]) for row in cur_step.fetchall()]
-            for step in steps:
-                app.logger.debug('    for step in steps: ' + step['step_short'])
+            steps = Step.query.filter_by(checklist_id=checklist_id, section_id=section_id, deleted_ind='N') \
+                .order_by(Step.step_seq).all()
             section['steps'] = steps
         return render_template("show_checklist.html", name=checklist_name, desc=checklist_desc, crt_user=audit_crt_user,
                                crt_ts=audit_crt_ts, upd_user=audit_upd_user, upd_ts=audit_upd_ts, sections=sections)
@@ -434,30 +472,14 @@ def upd_section(section_id):
             flash("Quelque chose n'a pas fonctionné.")
         return redirect(url_for('upd_checklist', checklist_id=checklist_id))
     else:
-        row = db_query(
-            '''
-            select section_seq, section_name, section_detail
-              from tcl_section
-             where section_id = ?
-            ''',
-            [section_id], one=True)
-        if row:
-            form.section_seq.data = row[0]
-            form.section_name.data = row[1]
-            form.section_detail.data = row[2]
-            steps = g.dbh.execute(
-                '''
-                select step_id, step_seq, step_short
-                  from tcl_step
-                 where section_id = ?
-                   and deleted_ind = 'N'
-                 order by step_seq
-                ''', (section_id, )
-            )
-            steps = [dict(step_id=step[0], step_seq=step[1], step_short=step[2])
-                     for step in steps.fetchall()]
+        sect = Section.query.get(section_id)
+        if sect:
+            form.section_seq.data = sect.section_seq
+            form.section_name.data = sect.section_name
+            form.section_detail.data = sect.section_detail
+            steps = Step.query.filter_by(section_id=section_id, deleted_ind='N').order_by(Step.step_seq).all()
             return render_template("upd_section.html", form=form, checklist_id=checklist_id,
-                                   name=row[0], desc=row[1], steps=steps)
+                                   name=sect.section_name, desc=sect.section_detail, steps=steps)
         else:
             flash("L'information n'a pas pu être retrouvée.")
             return redirect(url_for('upd_checklist', checklist_id=checklist_id))
@@ -477,24 +499,12 @@ def del_section(section_id):
             flash("Quelque chose n'a pas fonctionné.")
         return redirect(url_for('upd_checklist', checklist_id=checklist_id))
     else:
-        row = db_query(
-            '''
-            select section_name
-              from tcl_section
-             where section_id = ?
-            ''',
-            [section_id], one=True)
-        if row:
-            section_name = row[0]
+        sect = Section.query.get(section_id)
+        if sect:
+            section_name = sect.section_name
             app.logger.debug(section_name)
-            count = db_query(
-                '''
-                select count(*) from tcl_step
-                 where section_id = ?
-                ''', [section_id], one=True
-            )
-            app.logger.debug('Nombre de steps pour cette section: ' + str(count[0]))
-            if count[0] > 0:
+            has_steps = Step.query.filter_by(section_id=section_id).first()
+            if has_steps:
                 flash("Cette section contient des étapes. Elle ne peut pas être supprimée.")
                 return redirect(url_for('upd_checklist', checklist_id=checklist_id))
             return render_template('del_section.html', form=form, name=section_name, checklist_id=checklist_id)
@@ -541,15 +551,9 @@ def del_step(step_id):
             flash("Quelque chose n'a pas fonctionné.")
         return redirect(url_for('upd_section', section_id=section_id))
     else:
-        row = db_query(
-            '''
-            select step_short
-              from tcl_step
-             where step_id = ?
-            ''',
-            [step_id], one=True)
-        if row:
-            step_short = row[0]
+        st = Step.query.get(step_id)
+        if st:
+            step_short = st.step_short
             return render_template('del_step.html', form=form, name=step_short, section_id=section_id)
         else:
             flash("L'information n'a pas pu être retrouvée.")
@@ -576,19 +580,13 @@ def upd_step(step_id):
             flash("Quelque chose n'a pas fonctionné.")
         return redirect(url_for('upd_section', section_id=section_id))
     else:
-        row = db_query(
-            '''
-            select step_seq, step_short, step_detail, step_user, step_code
-              from tcl_step
-             where step_id = ?
-            ''',
-            [step_id], one=True)
-        if row:
-            form.step_seq.data = row[0]
-            form.step_short.data = row[1]
-            form.step_detail.data = row[2]
-            form.step_user.data = row[3]
-            form.step_code.data = row[4]
+        st = Step.query.get(step_id)
+        if st:
+            form.step_seq.data = st.step_seq
+            form.step_short.data = st.step_short
+            form.step_detail.data = st.step_detail
+            form.step_user.data = st.step_user
+            form.step_code.data = st.step_code
             return render_template("upd_step.html", form=form, section_id=section_id)
         else:
             flash("L'information n'a pas pu être retrouvée.")
@@ -598,25 +596,25 @@ def upd_step(step_id):
 # Database functions
 
 # Connect to the database and return a db handle
-def connect_db():
-    print(app.config['DATABASE'])
-    return sqlite3.connect(app.config['DATABASE'], detect_types=sqlite3.PARSE_DECLTYPES)
+# def connect_db():
+#     print(app.config['DATABASE'])
+#     return sqlite3.connect(app.config['DATABASE'], detect_types=sqlite3.PARSE_DECLTYPES)
 
 
 # Utility function to create the database from the schema definition in db.sql
-def init_db():
-    with closing(connect_db()) as dbh:
-        with app.open_resource('data/db.sql', mode='r') as f:
-            dbh.cursor().executescript(f.read())
-        dbh.commit()
+# def init_db():
+#     with closing(connect_db()) as dbh:
+#         with app.open_resource('data/db.sql', mode='r') as f:
+#            dbh.cursor().executescript(f.read())
+#        dbh.commit()
 
 
 # Execute a query
-def db_query(query, args=(), one=False):
-    cur = g.dbh.execute(query, args)
-    rv = cur.fetchall()
-    cur.close()
-    return (rv[0] if rv else None) if one else rv
+# def db_query(query, args=(), one=False):
+#    cur = g.dbh.execute(query, args)
+#    rv = cur.fetchall()
+#    cur.close()
+#    return (rv[0] if rv else None) if one else rv
 
 
 def user_exists(user_email):
@@ -662,251 +660,173 @@ def change_password(user_email, new_password):
 
 
 def db_add_checklist(checklist_name, checklist_desc):
-    audit_user = session.get('user_email', None)
-    st_insert = '''
-        insert into tchecklist(checklist_name, checklist_desc, audit_crt_user, audit_crt_ts)
-            values(?, ?, ?, ?)
-    '''
+    audit_crt_user = session.get('user_email', None)
+    audit_crt_ts = datetime.now()
+    cl = Checklist(checklist_name, checklist_desc, audit_crt_user, audit_crt_ts)
     try:
-        sth = g.dbh.cursor()
-        sth.execute(st_insert, [checklist_name, checklist_desc, audit_user, datetime.now()])
-        g.dbh.commit()
-        sth.close()
+        db.session.add(cl)
+        db.session.commit()
     except Exception as e:
-        app.logger.error('DB Error' + e.__str__())
+        app.logger.error('DB Error' + str(e))
         return False
     return True
 
 
 def db_del_checklist(checklist_id):
     audit_user = session.get('user_email', None)
-    st_update = '''
-    update tchecklist
-       set deleted_ind = 'Y'
-          ,audit_upd_user = ?
-          ,audit_upd_ts   = ?
-     where checklist_id = ?
-    '''
-    st_upd_sect = '''
-    update tcl_section
-       set deleted_ind = 'Y'
-     where checklist_id = ?
-    '''
-    st_upd_step = '''
-    update tcl_step
-       set deleted_ind = 'Y'
-     where checklist_id = ?
-    '''
     try:
-        sth = g.dbh.cursor()
-        sth.execute(st_update, [audit_user, datetime.now(), checklist_id])
-        sth.execute(st_upd_sect, [checklist_id])
-        sth.execute(st_upd_step, [checklist_id])
-        g.dbh.commit()
+        cl = Checklist.query.get(checklist_id)
+        cl.deleted_ind = 'Y'
+        cl.audit_upd_user = audit_user
+        cl.audit_upd_ts = datetime.now()
+
+        sections = Section.query.filter_by(checklist_id=checklist_id).all()
+        for section in sections:
+            section.deleted_ind = 'Y'
+
+        steps = Step.query.filter_by(checklist_id=checklist_id).all()
+        for step in steps:
+            step.deleted_ind = 'Y'
+
+        db.session.commit()
     except Exception as e:
-        app.logger.error('DB Error' + e.__str__())
+        app.logger.error('DB Error' + str(e))
         return False
     return True
 
 
 def db_upd_checklist(checklist_id, checklist_name, checklist_desc):
     audit_user = session.get('user_email', None)
-    st_update = '''
-    update tchecklist
-       set checklist_name = ?
-          ,checklist_desc = ?
-          ,audit_upd_user = ?
-          ,audit_upd_ts   = ?
-     where checklist_id = ?
-    '''
     try:
-        sth = g.dbh.cursor()
-        sth.execute(st_update, [checklist_name, checklist_desc, audit_user, datetime.now(), checklist_id])
-        g.dbh.commit()
+        cl = Checklist.query.get(checklist_id)
+        cl.checklist_desc = checklist_name
+        cl.checklist_desc = checklist_desc
+        cl.audit_upd_user = audit_user
+        cl.audit_upd_ts = datetime.now()
+        db.session.commit()
     except Exception as e:
-        app.logger.error('DB Error' + e.__str__())
+        app.logger.error('DB Error' + str(e))
         return False
     return True
 
 
 def db_add_section(checklist_id, section_seq, section_name, section_detail):
-    st_insert = '''
-        insert into tcl_section(checklist_id, section_seq, section_name, section_detail)
-            values(?, ?, ?, ?)
-    '''
+    sect = Section(checklist_id, section_seq, section_name, section_detail)
     try:
-        sth = g.dbh.cursor()
-        sth.execute(st_insert, [checklist_id, section_seq, section_name, section_detail])
+        db.session.add(sect)
         if db_renum_section(checklist_id):
-            g.dbh.commit()
+            db.session.commit()
         else:
-            g.dbh.rollback()
-        sth.close()
+            db.session.rollback()
     except Exception as e:
-        app.logger.error('DB Error' + e.__str__())
+        app.logger.error('DB Error' + str(e))
         return False
     return True
 
 
 def db_del_section(section_id, checklist_id):
-    st_delete = '''
-    delete from tcl_section
-     where section_id = ?
-    '''
+    sect = Section.query.get(section_id)
     try:
-        sth = g.dbh.cursor()
-        sth.execute(st_delete, [section_id])
+        db.session.delete(sect)
         if db_renum_section(checklist_id):
-            g.dbh.commit()
+            db.session.commit()
         else:
-            g.dbh.rollback()
+            db.session.rollback()
             return False
     except Exception as e:
-        app.logger.error('DB Error' + e.__str__())
+        app.logger.error('DB Error' + str(e))
         return False
     return True
 
 
 def db_upd_section(section_id, section_seq, section_name, section_detail, checklist_id):
-    st_update = '''
-    update tcl_section
-       set section_seq = ?
-          ,section_name = ?
-          ,section_detail = ?
-     where section_id = ?
-    '''
+    sect = Section.query.get(section_id)
+    sect.section_seq = section_seq
+    sect.section_name = section_name
+    sect.section_detail = section_detail
     try:
-        sth = g.dbh.cursor()
-        sth.execute(st_update, [section_seq, section_name, section_detail, section_id])
         if db_renum_section(checklist_id):
-            g.dbh.commit()
+            db.session.commit()
         else:
-            g.dbh.rollback()
+            db.session.rollback()
             return False
     except Exception as e:
-        app.logger.error('DB Error' + e.__str__())
+        app.logger.error('DB Error' + str(e))
         return False
     return True
 
 
 def db_renum_section(checklist_id):
-    st_update = '''
-        update tcl_section set section_seq = ?
-         where section_id = ?
-    '''
     try:
-        sth = g.dbh.cursor()
-        cur_sect = g.dbh.execute(
-            '''
-            select section_id
-              from tcl_section
-             where checklist_id = ?
-               and deleted_ind = 'N'
-             order by section_seq
-            ''',
-            (checklist_id, ))
-        sections = [dict(section_id=row[0]) for row in cur_sect.fetchall()]
+        sections = Section.query.filter_by(checklist_id=checklist_id, deleted_ind='N') \
+            .order_by(Section.section_seq).all()
         new_seq = 0
         for section in sections:
-            section_id = section['section_id']
             new_seq += 10
-            sth.execute(st_update, [new_seq, section_id])
-        cur_sect.close()
-        sth.close()
+            section.section_seq = new_seq
     except Exception as e:
-        app.logger.error('DB Error' + e.__str__())
+        app.logger.error('DB Error' + str(e))
         return False
     return True
 
 
 def db_add_step(checklist_id, section_id, step_seq, step_short, step_detail, step_user, step_code):
-    st_insert = '''
-        insert into tcl_step(checklist_id, section_id, step_seq, step_short, step_detail, step_user, step_code)
-            values(?, ?, ?, ?, ?, ?, ?)
-    '''
+    step = Step(checklist_id, section_id, step_seq, step_short, step_detail, step_user, step_code)
     try:
-        sth = g.dbh.cursor()
-        sth.execute(st_insert, [checklist_id, section_id, step_seq, step_short, step_detail, step_user, step_code])
+        db.session.add(step)
         if db_renum_step(section_id):
-            g.dbh.commit()
+            db.session.commit()
         else:
-            g.dbh.rollback()
-        sth.close()
+            db.session.rollback()
     except Exception as e:
-        app.logger.error('DB Error' + e.__str__())
+        app.logger.error('DB Error' + str(e))
         return False
     return True
 
 
 def db_del_step(step_id, section_id):
-    st_delete = '''
-    delete from tcl_step
-     where step_id = ?
-    '''
+    step = Step.query.get(step_id)
     try:
-        sth = g.dbh.cursor()
-        sth.execute(st_delete, [step_id])
+        db.session.delete(step)
         if db_renum_step(section_id):
-            g.dbh.commit()
+            db.session.commit()
         else:
-            g.dbh.rollback()
+            db.session.rollback()
             return False
     except Exception as e:
-        app.logger.error('DB Error' + e.__str__())
+        app.logger.error('DB Error' + str(e))
         return False
     return True
 
 
 def db_upd_step(step_id, step_seq, step_short, step_detail, step_user, step_code, section_id):
-    st_update = '''
-    update tcl_step
-       set step_seq = ?
-          ,step_short = ?
-          ,step_detail = ?
-          ,step_user = ?
-          ,step_code = ?
-     where step_id = ?
-    '''
+    step = Step.query.get(step_id)
+    step.step_seq = step_seq
+    step.step_short = step_short
+    step.step_detail = step_detail
+    step.step_user = step_user
+    step.step_code = step_code
     try:
-        sth = g.dbh.cursor()
-        sth.execute(st_update, [step_seq, step_short, step_detail, step_user, step_code, step_id])
         if db_renum_step(section_id):
-            g.dbh.commit()
+            db.session.commit()
         else:
-            g.dbh.rollback()
+            db.session.rollback()
             return False
     except Exception as e:
-        app.logger.error('DB Error' + e.__str__())
+        app.logger.error('DB Error' + str(e))
         return False
     return True
 
 
 def db_renum_step(section_id):
-    st_update = '''
-        update tcl_step set step_seq = ?
-         where step_id = ?
-    '''
     try:
-        sth = g.dbh.cursor()
-        cur_step = g.dbh.execute(
-            '''
-            select step_id
-              from tcl_step
-             where section_id = ?
-               and deleted_ind = 'N'
-             order by step_seq
-            ''',
-            (section_id, ))
-        steps = [dict(step_id=row[0]) for row in cur_step.fetchall()]
+        steps = Step.query.filter_by(section_id=section_id, deleted_ind='N').order_by(Step.step_seq).all()
         new_seq = 0
         for step in steps:
-            step_id = step['step_id']
             new_seq += 10
-            sth.execute(st_update, [new_seq, step_id])
-        cur_step.close()
-        sth.close()
+            step.step_seq = new_seq
     except Exception as e:
-        app.logger.error('DB Error' + e.__str__())
+        app.logger.error('DB Error' + str(e))
         return False
     return True
 

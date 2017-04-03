@@ -46,24 +46,20 @@ CREATE TABLE tcl_step(
     section_id     integer not null,
     step_seq       integer not null,
     step_short     text    not null default '',
-    step_detail    text    not null default '',
-    deleted_ind    char(1) not null default 'N'
-);
-create index cl_step_x1 on tcl_step(checklist_id, section_id, step_seq);
-
-drop table if exists tcl_step;
-CREATE TABLE tcl_step(
-    step_id        integer primary key autoincrement,
-    checklist_id   integer not null,
-    section_id     integer not null,
-    step_seq       integer not null,
-    step_short     text    not null default '',
     step_detail    text    default null,
     step_code      text    default null,
     step_user      text    default null,
     deleted_ind    char(1) not null default 'N'
 );
 create index cl_step_x1 on tcl_step(checklist_id, section_id, step_seq);
+
+drop table if exists tpredef_var;
+CREATE TABLE tpredef_var(
+    var_id      integer primary key autoincrement,
+    var_name    text    not null default '',
+    var_desc    text
+);
+create unique index xpredef_var_x1 on tpredef_var(var_name);
 
 --
 alter table tcl_step rename to tcl_step_old;
