@@ -114,10 +114,10 @@ class Step(db.Model):
         return '<step: {}>'.format(self.step_short)
 
 
-class Predef_vars(db.Model):
+class Predef_Var(db.Model):
     __tablename__ = 'tpredef_var'
     var_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    var_name = db.Column(db.String(16), nullabale=False)
+    var_name = db.Column(db.String(16), nullable=False)
     var_desc = db.Column(db.Text, nullable=True)
 
     def __init__(self, var_name, var_desc):
@@ -218,9 +218,21 @@ class DelStepForm(FlaskForm):
 
 # Formulaire pour ajouter une variable
 class AddVarForm(FlaskForm):
-    var_name = StringField('Nom de la variable', validators=[DataRequired])
-    var_desc = TextAreaField('Description')
+    var_name = StringField('Nom de la variable')
+    var_desc = StringField('Description')
     submit = SubmitField('Ajouter')
+
+
+# Formulaire pour ajouter une variable
+class UpdVarForm(FlaskForm):
+    var_name = StringField('Nom de la variable')
+    var_desc = StringField('Description')
+    submit = SubmitField('Modifier')
+
+
+# Formulaire pour confirmer la suppression d'une variable
+class DelVarForm(FlaskForm):
+    submit = SubmitField('Supprimer')
 
 
 # This creates the database connection for each request
@@ -415,7 +427,7 @@ def show_checklist(checklist_id):
         audit_crt_ts = cl.audit_crt_ts
         audit_upd_user = cl.audit_upd_user
         audit_upd_ts = cl.audit_upd_ts
-        sections = Section.query.filter_by(checklist_id=checklist_id,deleted_ind='N') \
+        sections = Section.query.filter_by(checklist_id=checklist_id, deleted_ind='N') \
             .order_by(Section.section_seq).all()
         # l_sections = [ [section_name, [step 1, step 2,...]], [section_name, [step 1, step 2, step 3,...]],...]
         for section in sections:
@@ -591,6 +603,80 @@ def upd_step(step_id):
         else:
             flash("L'information n'a pas pu être retrouvée.")
             return redirect(url_for('upd_section', section_id=section_id))
+
+
+@app.route('/list_vars')
+def list_vars():
+    if not logged_in():
+        return redirect(url_for('login'))
+    pred_vars = Predef_Var.query.filter_by().order_by(Predef_Var.var_name).all()
+    return render_template('list_vars.html', pred_vars=pred_vars)
+
+
+@app.route('/add_var', methods=['GET', 'POST'])
+def add_var():
+    if not logged_in():
+        return redirect(url_for('login'))
+    app.logger.debug('Entering add_var')
+    form = AddVarForm()
+    if form.validate_on_submit():
+        app.logger.debug('Inserting a new var')
+        var_name = request.form['var_name']
+        var_desc = request.form['var_desc']
+        if db_add_var(var_name, var_desc):
+            flash('La nouvelle variable est ajoutée.')
+            return redirect(url_for('list_vars'))
+        else:
+            flash('Une erreur de base de données est survenue.')
+            abort(500)
+    return render_template('add_var.html', form=form)
+
+
+@app.route('/del_var/<int:var_id>', methods=['GET', 'POST'])
+def del_var(var_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+    form = DelVarForm()
+    if form.validate_on_submit():
+        app.logger.debug('Deleting a variable')
+        if db_del_var(var_id):
+            flash("La variable a été effacée.")
+        else:
+            flash("Quelque chose n'a pas fonctionné.")
+        return redirect(url_for('list_vars'))
+    else:
+        pre_v = Predef_Var.query.get(var_id)
+        if pre_v:
+            var_name = pre_v.var_name
+            return render_template('del_var.html', form=form, name=var_name)
+        else:
+            flash("L'information n'a pas pu être retrouvée.")
+            return redirect(url_for('list_vars'))
+
+
+@app.route('/upd_var/<int:var_id>', methods=['GET', 'POST'])
+def upd_var(var_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+    form = UpdVarForm()
+    if form.validate_on_submit():
+        app.logger.debug('Updating a step')
+        var_name = form.var_name.data
+        var_desc = form.var_desc.data
+        if db_upd_var(var_id, var_name, var_desc):
+            flash("La variable a été modifiée.")
+        else:
+            flash("Quelque chose n'a pas fonctionné.")
+        return redirect(url_for('list_vars'))
+    else:
+        pre_v = Predef_Var.query.get(var_id)
+        if pre_v:
+            form.var_name.data = pre_v.var_name
+            form.var_desc.data = pre_v.var_desc
+            return render_template("upd_var.html", form=form)
+        else:
+            flash("L'information n'a pas pu être retrouvée.")
+            return redirect(url_for('list_vars'))
 
 
 # Database functions
@@ -830,6 +916,39 @@ def db_renum_step(section_id):
         return False
     return True
 
+
+def db_add_var(var_name, var_desc):
+    var = Predef_Var(var_name, var_desc)
+    try:
+        db.session.add(var)
+        db.session.commit()
+    except Exception as e:
+        app.logger.error('DB Error' + str(e))
+        return False
+    return True
+
+
+def db_del_var(var_id):
+    pre_v = Predef_Var.query.get(var_id)
+    try:
+        db.session.delete(pre_v)
+        db.session.commit()
+    except Exception as e:
+        app.logger.error('DB Error' + str(e))
+        return False
+    return True
+
+
+def db_upd_var(var_id, var_name, var_desc):
+    pre_v = Predef_Var.query.get(var_id)
+    pre_v.var_name = var_name
+    pre_v.var_desc = var_desc
+    try:
+        db.session.commit()
+    except Exception as e:
+        app.logger.error('DB Error' + str(e))
+        return False
+    return True
 
 # Start the server for the application
 if __name__ == '__main__':

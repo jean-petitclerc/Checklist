@@ -18,7 +18,7 @@
 {% block page_content %}
 <div class="container">
     <div class="page-header">
-        <h1>Ajouter une Nouvelle Variable</h1>
+        <h1>Modifier une Variable</h1>
     </div>
 
     <form class="form" method="post" role="form">
@@ -30,7 +30,7 @@
         <div class="form-group ">
             {{ render_field(form.var_desc, class="form-control") }}
         </div>
-        <input class="btn btn-default" id="submit" name="submit" type="submit" value="Ajouter">
+        <input class="btn btn-default" id="submit" name="submit" type="submit" value="Modifier">
         <a href="{{ url_for('list_vars') }}" class="btn btn-default">Annuler</a>
     </form>
 </div>

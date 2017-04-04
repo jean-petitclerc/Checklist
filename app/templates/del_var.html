@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block page_content %}
+<div class="container">
+    <div class="page-header">
+        <h1>Supprimer une Variable</h1>
+    </div>
+
+    <form class="form" method="post" role="form">
+        {{ form.hidden_tag() }}
+        {{ wtf.form_errors(form, hiddens="only") }}
+        <h4>
+            <em>Voulez-vous vraiment supprimer cette variable prédéfinie?</em>
+            <br>
+                Variable prédéfinie: {{ name }}
+            </br>
+        </h4>
+        <input class="btn btn-default" id="submit" name="submit" type="submit" value="Supprimer">
+        <a href="{{ url_for('list_vars') }}" class="btn btn-default">Annuler</a>
+    </form>
+</div>
+{% endblock %}
