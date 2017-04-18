@@ -12,7 +12,7 @@ import sqlite3
 
 # TODO Categorie et sous-categorie
 # TODO Show checklist
-# TODO Liste de variables prédéfinies
+# TODO Sélectionner les vars préd. pour un checklist
 # TODO Copier les variables prédéfinies dans le code
 # TODO Code snippets
 # TODO Génération de checklists remplies
@@ -32,12 +32,12 @@ db = SQLAlchemy(app)
 # Database Model
 class Admin_User(db.Model):
     __tablename__ = 'tadmin_user'
-    user_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    user_id = db.Column(db.Integer(), primary_key=True, autoincrement=True)
     first_name = db.Column(db.String(30), nullable=False)
     last_name = db.Column(db.String(30), nullable=False)
     user_email = db.Column(db.String(80), nullable=False, unique=True)
     user_pass = db.Column(db.String(100), nullable=False)
-    activated = db.Column(db.Boolean, nullable=False, default=True)
+    activated = db.Column(db.Boolean(), nullable=False, default=True)
 
     def __init__(self, first_name, last_name, user_email, user_pass):
         self.first_name = first_name
@@ -51,14 +51,16 @@ class Admin_User(db.Model):
 
 class Checklist(db.Model):
     __tablename__ = 'tchecklist'
-    checklist_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    checklist_name = db.Column(db.String(100), nullable=False)
-    checklist_desc = db.Column(db.Text, nullable=False, default='')
+    checklist_id = db.Column(db.Integer(), primary_key=True, autoincrement=True)
+    checklist_name = db.Column(db.String(100), nullable=False, unique=True)
+    checklist_desc = db.Column(db.Text(), nullable=False, default='')
     audit_crt_user = db.Column(db.String(80), nullable=False)
     audit_crt_ts = db.Column(db.DateTime(), nullable=False)
     audit_upd_user = db.Column(db.String(80), nullable=True)
     audit_upd_ts = db.Column(db.DateTime(), nullable=True)
     deleted_ind = db.Column(db.String(1), nullable=False, default='N')
+    sections = db.relationship('Section', backref='tchecklist', lazy='dynamic')
+    cl_vars = db.relationship('Checklist_Var', backref='tchecklist', lazy='dynamic')
 
     def __init__(self, checklist_name, checklist_desc, audit_crt_user, audit_crt_ts):
         self.checklist_name = checklist_name
@@ -72,12 +74,13 @@ class Checklist(db.Model):
 
 class Section(db.Model):
     __tablename__ = 'tcl_section'
-    section_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    checklist_id = db.Column(db.Integer)
-    section_seq = db.Column(db.Integer, nullable=False)
+    section_id = db.Column(db.Integer(), primary_key=True, autoincrement=True)
+    checklist_id = db.Column(db.Integer(), db.ForeignKey('tchecklist.checklist_id'))
+    section_seq = db.Column(db.Integer(), nullable=False)
     section_name = db.Column(db.String(100), nullable=False, default='')
-    section_detail = db.Column(db.Text, nullable=False, default='')
+    section_detail = db.Column(db.Text(), nullable=False, default='')
     deleted_ind = db.Column(db.String(1), nullable=False, default='N')
+    steps = db.relationship('Step', backref='tcl_section', lazy='dynamic')
 
     def __init__(self, checklist_id, section_seq, section_name, section_detail):
         self.checklist_id = checklist_id
@@ -91,14 +94,14 @@ class Section(db.Model):
 
 class Step(db.Model):
     __tablename__ = 'tcl_step'
-    step_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    checklist_id = db.Column(db.Integer, nullable=False)
-    section_id = db.Column(db.Integer)
-    step_seq = db.Column(db.Integer, nullable=False)
+    step_id = db.Column(db.Integer(), primary_key=True, autoincrement=True)
+    checklist_id = db.Column(db.Integer(), nullable=False)
+    section_id = db.Column(db.Integer(), db.ForeignKey('tcl_section.section_id'))
+    step_seq = db.Column(db.Integer(), nullable=False)
     step_short = db.Column(db.String(100), nullable=False, default='')
-    step_detail = db.Column(db.Text, nullable=True)
+    step_detail = db.Column(db.Text(), nullable=True)
     step_user = db.Column(db.String(16), nullable=True)
-    step_code = db.Column(db.Text, nullable=True)
+    step_code = db.Column(db.Text(), nullable=True)
     deleted_ind = db.Column(db.String(1), nullable=False, default='N')
 
     def __init__(self, checklist_id, section_id, step_seq, step_short, step_detail, step_user, step_code):
@@ -116,9 +119,11 @@ class Step(db.Model):
 
 class Predef_Var(db.Model):
     __tablename__ = 'tpredef_var'
-    var_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    var_name = db.Column(db.String(16), nullable=False)
-    var_desc = db.Column(db.Text, nullable=True)
+    var_id = db.Column(db.Integer(), primary_key=True, autoincrement=True)
+    var_name = db.Column(db.String(16), nullable=False, unique=True)
+    var_desc = db.Column(db.Text(), nullable=True)
+    checklists = db.relationship('Checklist_Var', backref='tpredef_var', lazy='dynamic')
+
 
     def __init__(self, var_name, var_desc):
         self.var_name = var_name
@@ -126,6 +131,13 @@ class Predef_Var(db.Model):
 
     def __repr__(self):
         return '<var: {}>'.format(self.var_name)
+
+
+class Checklist_Var(db.Model):
+    __tablename__ = 'tcl_var'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    checklist_id = db.Column(db.Integer, db.ForeignKey('tchecklist.checklist_id'))
+    var_id = db.Column(db.Integer, db.ForeignKey('tpredef_var.var_id'))
 
 
 # Formulaire web pour l'écran de login
@@ -609,7 +621,7 @@ def upd_step(step_id):
 def list_vars():
     if not logged_in():
         return redirect(url_for('login'))
-    pred_vars = Predef_Var.query.filter_by().order_by(Predef_Var.var_name).all()
+    pred_vars = Predef_Var.query.order_by(Predef_Var.var_name).all()
     return render_template('list_vars.html', pred_vars=pred_vars)
 
 
@@ -677,6 +689,35 @@ def upd_var(var_id):
         else:
             flash("L'information n'a pas pu être retrouvée.")
             return redirect(url_for('list_vars'))
+
+
+@app.route('/list_cl_vars/<int:checklist_id>')
+def list_cl_vars(checklist_id):
+    # Generer une table (nom, desc, inclure/exclure)
+    # Le bouton inclure ou exclure est choisi selon la valeur passée
+    # en appuyant inclure/exclure on insert/delete dans la table tcl_vars
+    # on redirecte vers cette list
+    if not logged_in():
+        return redirect(url_for('login'))
+    cl = Checklist.query.get(checklist_id)
+    cl_vars = cl.cl_vars
+    p_vars = Predef_Var.query.order_by(Predef_Var.var_name).all()
+    for p_var in p_vars:
+        if p_var.var_id in cl.cl_vars:
+            p_var.incl_excl = 'I'
+        else:
+            p_var.incl_excl = 'E'
+    return render_template('list_cl_vars.html', checklist_id=checklist_id, p_vars=p_vars)
+
+
+@app.route('/add_cl_var/<int:checklist_id>/<int:var_id>')
+def add_cl_var(checklist_id, var_id):
+    return redirect(url_for('/list_cl_vars', checklist_id=checklist_id))
+
+
+@app.route('/rem_cl_var/<int:checklist_id>/<int:var_id>')
+def rem_cl_var(checklist_id, var_id):
+    return redirect(url_for('/list_cl_vars', checklist_id=checklist_id))
 
 
 # Database functions

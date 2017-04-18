@@ -1,85 +1,35 @@
-drop table if exists tuser;
-create table tuser (
-    user_name text primary key,
-    user_pass text not null
-);
-insert into tuser values('jean','');
+# python app/checklist.py shell
+# from checklist import db
+# db.create_all()
 
-drop table if exists tadmin_user;
-create table tadmin_user (
-    user_id integer primary key autoincrement,
-    first_name text not null,
-    last_name text not null,
-    user_email text not null,
-    user_pass text not null,
-    activated text not null default 'N'
-);
+create index ix_section_01 on tcl_section(checklist_id, section_seq);
 
-drop table if exists tchecklist;
-CREATE TABLE tchecklist (
-    checklist_id   integer primary key autoincrement,
-    checklist_name text      not null,
-    checklist_desc text      not null default '',
-    audit_crt_user text      not null default '',
-    audit_crt_ts   timestamp not null,
-    audit_upd_user text,
-    audit_upd_ts   timestamp,
-    deleted_ind    char(1)   not null default 'N'
-);
-create index checklist_x1 on tchecklist(checklist_name, checklist_id);
+create index ix_step_01 on tcl_step(checklist_id, section_id, step_seq);
 
-drop table if exists tcl_section;
-CREATE TABLE tcl_section(
-    section_id     integer primary key autoincrement,
-    checklist_id   integer not null,
-    section_seq    integer not null,
-    section_name   text    not null default '',
-    section_detail text    not null default '',
-    deleted_ind    char(1) not null default 'N'
-);
-create index cl_section_x1 on tcl_section(checklist_id, section_seq);
-
-drop table if exists tcl_step;
-CREATE TABLE tcl_step(
-    step_id        integer primary key autoincrement,
-    checklist_id   integer not null,
-    section_id     integer not null,
-    step_seq       integer not null,
-    step_short     text    not null default '',
-    step_detail    text    default null,
-    step_code      text    default null,
-    step_user      text    default null,
-    deleted_ind    char(1) not null default 'N'
-);
-create index cl_step_x1 on tcl_step(checklist_id, section_id, step_seq);
-
-drop table if exists tpredef_var;
-CREATE TABLE tpredef_var(
-    var_id      integer primary key autoincrement,
-    var_name    text    not null default '',
-    var_desc    text
-);
-create unique index xpredef_var_x1 on tpredef_var(var_name);
-
+create unique index ix_cl_var_01 on tcl_var(checklist_id, var_id);
+create unique index ix_cl_var_02 on tcl_var(var_id, checklist_id);
 --
-alter table tcl_step rename to tcl_step_old;
-drop index cl_step_x1;
-
-create table ...
-
-insert into tcl_step (step_id, checklist_id, section_id, step_seq, step_short, step_detail, step_code,
-                      step_user, deleted_ind)
-       select step_id, checklist_id, section_id, step_seq, step_short, step_detail, step_code,
-              null, deleted_ind
-         from tcl_step_old;
-
 --
-insert into tcl_section values(1, 2, 10, 'section 1', 'pre-steps', 'N');
-insert into tcl_section values(2, 2, 20, 'section 2', 'main section', 'N');
-insert into tcl_section values(3, 2, 30, 'section 3', 'post-step', 'N');
+INSERT INTO "tadmin_user" VALUES(1,'Jean','Petitclerc','jean.petitclerc@groupepp.com','pbkdf2:sha1:1000$UW9prz0j$18052c6f0d6585136d2ba3208a442d21373640b0','1');
 
-insert into tcl_step values(1, 2, 1, 10, 'pre-step 1', 'blablabla', 'N');
-insert into tcl_step values(2, 2, 1, 20, 'pre-step 2', 'blablabla', 'N');
-insert into tcl_step values(3, 2, 2, 10, 'step 1', 'blablabla', 'N');
-insert into tcl_step values(4, 2, 2, 20, 'step 2', 'blablabla', 'N');
-insert into tcl_step values(5, 2, 3, 10, 'post-step 1', 'blablabla', 'N');
+INSERT INTO "tchecklist" VALUES(2,'Stopper Oracle','Instructions détaillées pour stopper Oracle.','jean.petitclerc@groupepp.com','2017-02-22 16:02:01.185136','jean.petitclerc@groupepp.com','2017-03-23 06:18:04.425291','N');
+INSERT INTO "tchecklist" VALUES(3,'Démarrer Oracle','Instructions détaillées pour démarrer Oracle','jean.petitclerc@groupepp.com','2017-02-22 16:02:41.929156','jean.petitclerc@groupepp.com','2017-03-02 22:13:14.194065','N');
+
+INSERT INTO "tcl_section" VALUES(2,2,20,'Main Steps','main section','N');
+INSERT INTO "tcl_section" VALUES(5,2,30,'Toute nouvelle section','blablabla','Y');
+INSERT INTO "tcl_section" VALUES(6,2,10,'Pre-Steps','Préparation','N');
+INSERT INTO "tcl_section" VALUES(8,2,30,'Post-Steps','Finalisation et ménage.','N');
+
+INSERT INTO "tcl_step" VALUES(1,2,1,10,'pre-step 1','blablabla',NULL,NULL,'N');
+INSERT INTO "tcl_step" VALUES(2,2,1,20,'pre-step 2','blablabla',NULL,NULL,'N');
+INSERT INTO "tcl_step" VALUES(3,2,2,10,'Stopper l''instance','Utiliser soit sqlplus ou srvctl','oracle', 'sudo su - oracle
+. profile_ora <DB_NAME>
+
+sqlplus / as sysdba
+shutdown immediate
+exit
+
+srvctl stop database -db <DB_NAME>','N');
+INSERT INTO "tcl_step" VALUES(5,2,3,10,'post-step 1','blablabla',NULL,NULL,'N');
+INSERT INTO "tcl_step" VALUES(8,2,6,10,'Blackout','Mettre un blackout dans Cloud','','','N');
+

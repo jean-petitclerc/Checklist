@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block page_content %}
+<div class="container">
+    <div class="page-header">
+        <h1>Liste des variables utilisées</h1>
+    </div>
+    <p>
+        {% if p_vars %}
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Nom</th>
+                    <th>Description</th>
+                    <th class="text-center">Modifier</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p_var in p_vars %}
+                    <tr>
+                        <td>{{ p_var['var_name'] }}</td>
+                        <td>{{ p_var['var_desc'] }}</td>
+                        {% if p_var['incl_excl'] == 'I' %}
+                            <td class="text-center"><a href="{{ url_for('add_cl_var', checklist_id=checklist_id, var_id=pred_var['var_id']) }}"
+                                class="btn btn-primary btn-xs" data-title="Inclure"><span class="glyphicon glyphicon-pencil"></span></a></td>
+                        {% else %}
+                            <td class="text-center"><a href="{{ url_for('rem_cl_var', checklist_id=checklist_id, var_id=pred_var['var_id']) }}"
+                                class="btn btn-danger btn-xs" data-title="Exclure"><span class="glyphicon glyphicon-trash"></span></a></td>
+                        {% endif %}
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <em>Il n'y a pas de variable prédéfinie dans la base de données</em>
+            <p>
+                Cliquer&nbsp<a href="{{ url_for('add_var') }}">ici</a>&nbsp pour en ajouter une.
+            </p>
+        {% endif %}
+    </p>
+    <a href="{{ url_for('add_var') }}" class="btn btn-default">Ajouter une variable prédéfinie</a>
+    <a href="{{ url_for('upd_checklist', checklist_id=checklist_id) }}" class="btn btn-default">Retour</a>
+</div>
+{% endblock %}
