@@ -5,3 +5,6 @@ instance/
 config.py
 data/*.db
 app/config/
+/app/data/checklist.db
+app/__pycache__/
+app/data/checklist.bkp

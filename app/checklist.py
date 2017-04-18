@@ -419,8 +419,13 @@ def upd_checklist(checklist_id):
             form.checklist_desc.data = cl.checklist_desc
             sections = Section.query.filter_by(checklist_id=checklist_id, deleted_ind='N') \
                 .order_by(Section.section_seq).all()
+            cl_vars = Checklist_Var.query.filter_by(checklist_id=checklist_id).order_by(Checklist_Var.var_id).all()
+            for cl_v in cl_vars:
+                pr_v = Predef_Var.query.get(cl_v.var_id)
+                cl_v.var_name = pr_v.var_name
+                cl_v.var_desc = pr_v.var_desc
             return render_template("upd_checklist.html", form=form, checklist_id=checklist_id,
-                                   name=cl.checklist_name, desc=cl.checklist_desc, sections=sections)
+                                   name=cl.checklist_name, desc=cl.checklist_desc, sections=sections, cl_vars=cl_vars)
         else:
             flash("L'information n'a pas pu être retrouvée.")
             return redirect(url_for('list_checklists'))
@@ -691,33 +696,24 @@ def upd_var(var_id):
             return redirect(url_for('list_vars'))
 
 
-@app.route('/list_cl_vars/<int:checklist_id>')
-def list_cl_vars(checklist_id):
-    # Generer une table (nom, desc, inclure/exclure)
-    # Le bouton inclure ou exclure est choisi selon la valeur passée
-    # en appuyant inclure/exclure on insert/delete dans la table tcl_vars
-    # on redirecte vers cette list
+@app.route('/add_cl_var/<int:checklist_id>')
+def add_cl_var(checklist_id, var_id):
     if not logged_in():
         return redirect(url_for('login'))
-    cl = Checklist.query.get(checklist_id)
-    cl_vars = cl.cl_vars
-    p_vars = Predef_Var.query.order_by(Predef_Var.var_name).all()
-    for p_var in p_vars:
-        if p_var.var_id in cl.cl_vars:
-            p_var.incl_excl = 'I'
-        else:
-            p_var.incl_excl = 'E'
-    return render_template('list_cl_vars.html', checklist_id=checklist_id, p_vars=p_vars)
+    return redirect(url_for('list_cl_vars', checklist_id=checklist_id))
 
 
-@app.route('/add_cl_var/<int:checklist_id>/<int:var_id>')
-def add_cl_var(checklist_id, var_id):
-    return redirect(url_for('/list_cl_vars', checklist_id=checklist_id))
-
-
-@app.route('/rem_cl_var/<int:checklist_id>/<int:var_id>')
-def rem_cl_var(checklist_id, var_id):
-    return redirect(url_for('/list_cl_vars', checklist_id=checklist_id))
+@app.route('/del_cl_var/<int:checklist_id>/<int:var_id>')
+def del_cl_var(checklist_id, var_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+    cl_v = Checklist_Var.query.filter_by(checklist_id=checklist_id, var_id=var_id).first()
+    if cl_v is None:
+        flash("L'information n'a pas pu être retrouvée.")
+    else:
+        db.session.delete(cl_v)
+        db.session.commit()
+    return redirect(url_for('upd_checklist', checklist_id=checklist_id))
 
 
 # Database functions

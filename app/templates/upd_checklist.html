@@ -68,7 +68,41 @@
         {% endif %}
     </p>
     <a href="{{ url_for('add_section') }}" class="btn btn-default">Ajouter une section</a>
-    <a href="{{ url_for('list_cl_vars', checklist_id=checklist_id) }}" class="btn btn-deafult">Varieables</a>
+    <a href="{{ url_for('list_checklists') }}" class="btn btn-default">Retour</a>
+    <p>
+        <h2>Variables</h2>
+        {% if cl_vars %}
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Nom</th>
+                        <th>Description</th>
+                        <th class="text-center">Supprimer</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cl_v in cl_vars %}
+                        <tr>
+                            <td>{{ cl_v['var_name'] }}</td>
+                            <td>{{ cl_v['var_desc'] }}</td>
+                            <td class="text-center">
+                                <a href="{{ url_for('del_cl_var', checklist_id=checklist_id, var_id=cl_v['var_id']) }}"
+                                   class="btn btn-danger btn-xs"  data-title="Supprimer">
+                                   <span class="glyphicon glyphicon-trash"></span>
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <em>Il n'y a pas de variable dans cette liste.</em>
+            <p>
+                Cliquer&nbsp<a href="{{ url_for('add_cl_var', checklist_id=checklist_id) }}">ici</a>&nbsp pour en ajouter une.
+            </p>
+        {% endif %}
+    </p>
+    <a href="{{ url_for('add_cl_var', checklist_id=checklist_id) }}" class="btn btn-default">Ajouter une variable</a>
     <a href="{{ url_for('list_checklists') }}" class="btn btn-default">Retour</a>
 </div>
 {% endblock %}

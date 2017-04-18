@@ -33,3 +33,8 @@ srvctl stop database -db <DB_NAME>','N');
 INSERT INTO "tcl_step" VALUES(5,2,3,10,'post-step 1','blablabla',NULL,NULL,'N');
 INSERT INTO "tcl_step" VALUES(8,2,6,10,'Blackout','Mettre un blackout dans Cloud','','','N');
 
+INSERT INTO "tpredef_var" VALUES(1,'<DB_NAME>','Nom de la base de données');
+INSERT INTO "tpredef_var" VALUES(2,'<DB_UNIQ_PRIM>','Nom de la base de données primaire');
+INSERT INTO "tpredef_var" VALUES(3,'<DB_UNIQ_STDB>','Nom de la base de données de relève');
+INSERT INTO "tpredef_var" VALUES(4,'<server_prim>','Nom du serveur où roule la BD primaire');
+INSERT INTO "tpredef_var" VALUES(5,'<server_stdb>','Nom du serveur où roule la BD de relève');
