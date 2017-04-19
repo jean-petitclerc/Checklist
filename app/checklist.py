@@ -10,9 +10,9 @@ from contextlib import closing
 from datetime import datetime
 import sqlite3
 
+# TODO Enlever le code DB dans les vues
 # TODO Categorie et sous-categorie
 # TODO Show checklist
-# TODO Sélectionner les vars préd. pour un checklist
 # TODO Copier les variables prédéfinies dans le code
 # TODO Code snippets
 # TODO Génération de checklists remplies
@@ -138,6 +138,13 @@ class Checklist_Var(db.Model):
     id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     checklist_id = db.Column(db.Integer, db.ForeignKey('tchecklist.checklist_id'))
     var_id = db.Column(db.Integer, db.ForeignKey('tpredef_var.var_id'))
+
+    def __init__(self, checklist_id, var_id):
+        self.checklist_id = checklist_id
+        self.var_id = var_id
+
+    def __repr__(self):
+        return '<checklist_var: {}:{}>'.format(self.checklist_id, self.var_id)
 
 
 # Formulaire web pour l'écran de login
@@ -696,11 +703,31 @@ def upd_var(var_id):
             return redirect(url_for('list_vars'))
 
 
-@app.route('/add_cl_var/<int:checklist_id>')
+@app.route('/sel_cl_vars/<int:checklist_id>')
+def sel_cl_vars(checklist_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+    l_vars = Predef_Var.query.order_by(Predef_Var.var_name).all()
+    s_vars = []
+    for p_var in l_vars:
+        c_var = Checklist_Var.query.filter_by(checklist_id=checklist_id, var_id=p_var.var_id).first()
+        if c_var is None:
+            s_vars.append(p_var)
+    return render_template('sel_cl_vars.html', checklist_id=checklist_id, s_vars=s_vars)
+
+
+@app.route('/add_cl_var/<int:checklist_id>/<int:var_id>')
 def add_cl_var(checklist_id, var_id):
     if not logged_in():
         return redirect(url_for('login'))
-    return redirect(url_for('list_cl_vars', checklist_id=checklist_id))
+    cl_v = Checklist_Var(checklist_id, var_id)
+    try:
+        db.session.add(cl_v)
+        db.session.commit()
+    except Exception as e:
+        app.logger.error('DB Error' + str(e))
+        flash("Oups, l'opération n'a pas fonctionné.")
+    return redirect(url_for('upd_checklist', checklist_id=checklist_id))
 
 
 @app.route('/del_cl_var/<int:checklist_id>/<int:var_id>')

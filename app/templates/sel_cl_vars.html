@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block page_content %}
+<div class="container">
+    <div class="page-header">
+        <h1>Liste des variables utilisables</h1>
+    </div>
+    <p>
+        {% if s_vars %}
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Nom</th>
+                    <th>Description</th>
+                    <th class="text-center">Ajouter</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s_var in s_vars %}
+                    <tr>
+                        <td>{{ s_var['var_name'] }}</td>
+                        <td>{{ s_var['var_desc'] }}</td>
+                        <td class="text-center"><a href="{{ url_for('add_cl_var', checklist_id=checklist_id, var_id=s_var['var_id']) }}"
+                            class="btn btn-primary btn-xs" data-title="Ajouter"><span class="glyphicon glyphicon-plus"></span></a></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <em>Il n'y a pas de variable prédéfinie dans la base de données</em>
+            <p>
+                Cliquer&nbsp<a href="{{ url_for('add_var') }}">ici</a>&nbsp pour en ajouter une.
+            </p>
+        {% endif %}
+    </p>
+    <a href="{{ url_for('upd_checklist', checklist_id=checklist_id) }}" class="btn btn-default">Retour</a>
+</div>
+{% endblock %}

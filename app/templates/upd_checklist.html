@@ -98,11 +98,11 @@
         {% else %}
             <em>Il n'y a pas de variable dans cette liste.</em>
             <p>
-                Cliquer&nbsp<a href="{{ url_for('add_cl_var', checklist_id=checklist_id) }}">ici</a>&nbsp pour en ajouter une.
+                Cliquer&nbsp<a href="{{ url_for('sel_cl_vars', checklist_id=checklist_id) }}">ici</a>&nbsp pour en ajouter une.
             </p>
         {% endif %}
     </p>
-    <a href="{{ url_for('add_cl_var', checklist_id=checklist_id) }}" class="btn btn-default">Ajouter une variable</a>
+    <a href="{{ url_for('sel_cl_vars', checklist_id=checklist_id) }}" class="btn btn-default">Ajouter une variable</a>
     <a href="{{ url_for('list_checklists') }}" class="btn btn-default">Retour</a>
 </div>
 {% endblock %}
