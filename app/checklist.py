@@ -147,6 +147,20 @@ class Checklist_Var(db.Model):
         return '<checklist_var: {}:{}>'.format(self.checklist_id, self.var_id)
 
 
+class Code_Snippet(db.Model):
+    __tablename__ = 'tcode_snippet'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    code_short = db.Column(db.String(80), unique=True)
+    code_text = db.Column(db.Text)
+
+    def __init__(self, code_short, code_text):
+        self.code_short = code_short
+        self.code_text = code_text
+
+    def __repr__(self):
+        return '<code_snippet: {}>'.format(self.code_short)
+
+
 # Formulaire web pour l'écran de login
 class LoginForm(FlaskForm):
     email = StringField('Courriel', validators=[DataRequired(), Email(message='Le courriel est invalide.')])
@@ -251,6 +265,25 @@ class UpdVarForm(FlaskForm):
 
 # Formulaire pour confirmer la suppression d'une variable
 class DelVarForm(FlaskForm):
+    submit = SubmitField('Supprimer')
+
+
+# Formulaire pour ajouter un bout de code
+class AddSnippetForm(FlaskForm):
+    code_short = StringField('Courte description')
+    code_text = TextAreaField('Code')
+    submit = SubmitField('Ajouter')
+
+
+# Formulaire pour ajouter un bout de code
+class UpdSnippetForm(FlaskForm):
+    code_short = StringField('Courte description')
+    code_text = TextAreaField('Code')
+    submit = SubmitField('Modifier')
+
+
+# Formulaire pour confirmer la suppression d'un bout de code
+class DelSnippetForm(FlaskForm):
     submit = SubmitField('Supprimer')
 
 
@@ -601,6 +634,7 @@ def upd_step(step_id):
     if not logged_in():
         return redirect(url_for('login'))
     session['step_id'] = step_id
+    checklist_id = session['checklist_id']
     section_id = session['section_id']
     form = UpdStepForm()
     if form.validate_on_submit():
@@ -623,7 +657,11 @@ def upd_step(step_id):
             form.step_detail.data = st.step_detail
             form.step_user.data = st.step_user
             form.step_code.data = st.step_code
-            return render_template("upd_step.html", form=form, section_id=section_id)
+            cl_vars = Checklist_Var.query.filter_by(checklist_id=checklist_id).all()
+            for cl_v in cl_vars:
+                p_var = Predef_Var.query.get(cl_v.var_id)
+                cl_v.var_name = p_var.var_name
+            return render_template("upd_step.html", form=form, section_id=section_id, cl_vars=cl_vars)
         else:
             flash("L'information n'a pas pu être retrouvée.")
             return redirect(url_for('upd_section', section_id=section_id))
@@ -741,6 +779,22 @@ def del_cl_var(checklist_id, var_id):
         db.session.delete(cl_v)
         db.session.commit()
     return redirect(url_for('upd_checklist', checklist_id=checklist_id))
+
+
+@app.route('/list_snippets')
+def list_snippets():
+    if not logged_in():
+        return redirect(url_for('login'))
+    snippets = Code_Snippet.query.order_by(Code_Snippet.code_short).all()
+    return render_template('list_snippets.html', pred_vars=snippets)
+
+
+@app.route('/add_snippet', methods=['GET', 'POST'])
+def add_snippet():
+    if not logged_in():
+        return redirect(url_for('login'))
+    app.logger.debug('Entering add_snippet')
+    return render_template("404.html")
 
 
 # Database functions

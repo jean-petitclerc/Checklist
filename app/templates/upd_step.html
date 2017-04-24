@@ -44,11 +44,16 @@
         <div class="form-group ">
             {{ render_field(form.step_code, class="form-control", rows="10", style="font-family:monospace;") }}
         </div>
-        <div>
-            <ol onclick="addText(event)">
-                <li class="btn btn-default">&ltDB_NAME&gt</li>
-            </ol>
-        </div>
+        {% if cl_vars %}
+            <div>
+                <p>Variables insérables</p>
+                <ol onclick="addText(event)">
+                {% for cl_v in cl_vars %}
+                    <li class="btn btn-default">{{ cl_v.var_name }}</li>
+                {% endfor %}
+                </ol>
+            </div>
+        {% endif %}
         <input class="btn btn-default" id="submit" name="submit" type="submit" value="Modifier">
         <a href="{{ url_for('upd_section', section_id=section_id) }}" class="btn btn-default">Annuler</a>
     </form>

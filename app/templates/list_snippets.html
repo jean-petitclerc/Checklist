@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block page_content %}
+<div class="container">
+    <div class="page-header">
+        <h1>Liste des Bouts de Code (Snippets)</h1>
+    </div>
+    <p>
+        {% if snippets %}
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th>Code</th>
+                    <th class="text-center">Modifier</th>
+                    <th class="text-center">Supprimer</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for snippet in snippets %}
+                    <tr>
+                        <td>{{ snippet['code_short'] }}</td>
+                        <td>{{ snippet['code_text'] }}</td>
+                        <td class="text-center"><a href="{{ url_for('upd_var', var_id=pred_var['var_id']) }}"
+                               class="btn btn-primary btn-xs" data-title="Modifier"><span class="glyphicon glyphicon-pencil"></span></a></td>
+                        <td class="text-center"><a href="{{ url_for('del_var', var_id=pred_var['var_id']) }}"
+                               class="btn btn-danger btn-xs" data-title="Supprimer"><span class="glyphicon glyphicon-trash"></span></a></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <em>Il n'y a pas de bout de code dans la base de données</em>
+            <p>
+                Cliquer&nbsp<a href="{{ url_for('add_snippet') }}">ici</a>&nbsp pour en ajouter un.
+            </p>
+        {% endif %}
+    </p>
+    <a href="{{ url_for('add_snippet') }}" class="btn btn-default">Ajouter un bout de code</a>
+    <a href="{{ url_for('index') }}" class="btn btn-default">Retour</a>
+</div>
+{% endblock %}
