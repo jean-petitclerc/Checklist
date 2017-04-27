@@ -20,9 +20,9 @@
                     <tr>
                         <td>{{ snippet['code_short'] }}</td>
                         <td>{{ snippet['code_text'] }}</td>
-                        <td class="text-center"><a href="{{ url_for('upd_var', var_id=pred_var['var_id']) }}"
+                        <td class="text-center"><a href="{{ url_for('upd_snippet', snip_id=snippet['snip_id']) }}"
                                class="btn btn-primary btn-xs" data-title="Modifier"><span class="glyphicon glyphicon-pencil"></span></a></td>
-                        <td class="text-center"><a href="{{ url_for('del_var', var_id=pred_var['var_id']) }}"
+                        <td class="text-center"><a href="{{ url_for('del_snippet', snip_id=snippet['snip_id']) }}"
                                class="btn btn-danger btn-xs" data-title="Supprimer"><span class="glyphicon glyphicon-trash"></span></a></td>
                     </tr>
                 {% endfor %}

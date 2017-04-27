@@ -8,14 +8,12 @@ from flask_script import Manager
 from flask_sqlalchemy import SQLAlchemy
 from contextlib import closing
 from datetime import datetime
-import sqlite3
 
-# TODO Enlever le code DB dans les vues
 # TODO Categorie et sous-categorie
 # TODO Show checklist
-# TODO Copier les variables prédéfinies dans le code
-# TODO Code snippets
+# TODO Code snippets (Embellir la liste, ajouter un bouton pour voir les snippets et revenir.
 # TODO Génération de checklists remplies
+# TODO Private variables
 
 app = Flask(__name__)
 manager = Manager(app)
@@ -135,7 +133,7 @@ class Predef_Var(db.Model):
 
 class Checklist_Var(db.Model):
     __tablename__ = 'tcl_var'
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    cl_v_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     checklist_id = db.Column(db.Integer, db.ForeignKey('tchecklist.checklist_id'))
     var_id = db.Column(db.Integer, db.ForeignKey('tpredef_var.var_id'))
 
@@ -149,7 +147,7 @@ class Checklist_Var(db.Model):
 
 class Code_Snippet(db.Model):
     __tablename__ = 'tcode_snippet'
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    snip_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     code_short = db.Column(db.String(80), unique=True)
     code_text = db.Column(db.Text)
 
@@ -489,8 +487,7 @@ def show_checklist(checklist_id):
         # l_sections = [ [section_name, [step 1, step 2,...]], [section_name, [step 1, step 2, step 3,...]],...]
         for section in sections:
             section_id = section.section_id
-            section_name = section.section_name
-            app.logger.debug('for section in sections: ' + str(section_id) + section['section_name'])
+            app.logger.debug('for section in sections: ' + str(section_id) + section.section_name)
             steps = Step.query.filter_by(checklist_id=checklist_id, section_id=section_id, deleted_ind='N') \
                 .order_by(Step.step_seq).all()
             section['steps'] = steps
@@ -758,13 +755,11 @@ def sel_cl_vars(checklist_id):
 def add_cl_var(checklist_id, var_id):
     if not logged_in():
         return redirect(url_for('login'))
-    cl_v = Checklist_Var(checklist_id, var_id)
-    try:
-        db.session.add(cl_v)
-        db.session.commit()
-    except Exception as e:
-        app.logger.error('DB Error' + str(e))
-        flash("Oups, l'opération n'a pas fonctionné.")
+    if db_add_cl_var(checklist_id, var_id):
+        flash('La nouvelle variable est ajoutée à la checklist.')
+    else:
+        flash('Une erreur de base de données est survenue.')
+        abort(500)
     return redirect(url_for('upd_checklist', checklist_id=checklist_id))
 
 
@@ -786,7 +781,7 @@ def list_snippets():
     if not logged_in():
         return redirect(url_for('login'))
     snippets = Code_Snippet.query.order_by(Code_Snippet.code_short).all()
-    return render_template('list_snippets.html', pred_vars=snippets)
+    return render_template('list_snippets.html', snippets=snippets)
 
 
 @app.route('/add_snippet', methods=['GET', 'POST'])
@@ -794,7 +789,64 @@ def add_snippet():
     if not logged_in():
         return redirect(url_for('login'))
     app.logger.debug('Entering add_snippet')
-    return render_template("404.html")
+    form = AddSnippetForm()
+    if form.validate_on_submit():
+        code_short = request.form['code_short']
+        code_text = request.form['code_text']
+        if db_add_snippet(code_short, code_text):
+            flash('Le nouveau bout de code est ajouté.')
+            return redirect(url_for('list_snippets'))
+        else:
+            flash('Une erreur de base de données est survenue.')
+            abort(500)
+    return render_template('add_snippet.html', form=form)
+
+
+@app.route('/upd_snippet/<int:snip_id>', methods=['GET', 'POST'])
+def upd_snippet(snip_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+    form = UpdSnippetForm()
+    if form.validate_on_submit():
+        app.logger.debug('Updating a snippet')
+        code_short = form.code_short.data
+        code_text = form.code_text.data
+        if db_upd_snippet(snip_id, code_short, code_text):
+            flash("Le bout de code a été modifié.")
+        else:
+            flash("Quelque chose n'a pas fonctionné.")
+        return redirect(url_for('list_snippets'))
+    else:
+        snippet = Code_Snippet.query.get(snip_id)
+        if snippet:
+            form.code_short.data = snippet.code_short
+            form.code_text.data = snippet.code_text
+            return render_template("upd_snippet.html", form=form)
+        else:
+            flash("L'information n'a pas pu être retrouvée.")
+            return redirect(url_for('list_snippets'))
+
+
+@app.route('/del_snippet/<int:snip_id>', methods=['GET', 'POST'])
+def del_snippet(snip_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+    form = DelSnippetForm()
+    if form.validate_on_submit():
+        app.logger.debug('Deleting a snippet')
+        if db_del_snippet(snip_id):
+            flash("Le bout de code a été effacé.")
+        else:
+            flash("Quelque chose n'a pas fonctionné.")
+        return redirect(url_for('list_snippets'))
+    else:
+        snippet = Code_Snippet.query.get(snip_id)
+        if snippet:
+            code_short = snippet.code_short
+            return render_template('del_snippet.html', form=form, name=code_short)
+        else:
+            flash("L'information n'a pas pu être retrouvée.")
+            return redirect(url_for('list_snippets'))
 
 
 # Database functions
@@ -1067,6 +1119,63 @@ def db_upd_var(var_id, var_name, var_desc):
         app.logger.error('DB Error' + str(e))
         return False
     return True
+
+
+def db_add_cl_var(checklist_id, var_id):
+    cl_v = Checklist_Var(checklist_id, var_id)
+    try:
+        db.session.add(cl_v)
+        db.session.commit()
+    except Exception as e:
+        app.logger.error('DB Error' + str(e))
+        return False
+    return True
+
+
+def db_del_cl_var(checklist_id, var_id):
+    cl_v = Checklist_Var.query.filter_by(checklist_id=checklist_id, var_id=var_id).first()
+    try:
+        db.session.delete(cl_v)
+        db.session.commit()
+    except Exception as e:
+        app.logger.error('DB Error' + str(e))
+        return False
+    return True
+
+
+def db_add_snippet(code_short, code_text):
+    snippet = Code_Snippet(code_short, code_text)
+    try:
+        db.session.add(snippet)
+        db.session.commit()
+    except Exception as e:
+        app.logger.error('DB Error' + str(e))
+        return False
+    return True
+
+
+def db_del_snippet(snip_id):
+    snippet = Code_Snippet.query.get(snip_id)
+    try:
+        db.session.delete(snippet)
+        db.session.commit()
+    except Exception as e:
+        app.logger.error('DB Error' + str(e))
+        return False
+    return True
+
+
+def db_upd_snippet(id, code_short, code_text):
+    snippet = Code_Snippet.query.get(id)
+    snippet.code_short = code_short
+    snippet.code_text = code_text
+    try:
+        db.session.commit()
+    except Exception as e:
+        app.logger.error('DB Error' + str(e))
+        return False
+    return True
+
 
 # Start the server for the application
 if __name__ == '__main__':
