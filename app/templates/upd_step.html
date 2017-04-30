@@ -46,6 +46,7 @@
         </div>
         {% if cl_vars %}
             <div>
+                <a href="{{ url_for('show_snippets', step_id=step_id) }}", class="btn btn-default">Bouts de Code</a>
                 <p>Variables insérables</p>
                 <ol onclick="addText(event)">
                 {% for cl_v in cl_vars %}

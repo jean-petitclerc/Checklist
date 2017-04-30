@@ -2,7 +2,7 @@
 {% block page_content %}
 <div class="container">
     <div class="page-header">
-        <h1>Liste des Bouts de Code (Snippets)</h1>
+        <h1>Affiche les Bouts de Code (Snippets)</h1>
     </div>
     <p>
         {% if snippets %}
@@ -14,14 +14,6 @@
                     <div class="panel-body">
                         <pre><code>{{ snippet['code_text'] }}</code></pre>
                     </div>
-                    <a href="{{ url_for('upd_snippet', snip_id=snippet['snip_id']) }}"
-                        class="btn btn-primary btn-xs" data-title="Modifier">
-                        <span class="glyphicon glyphicon-pencil"></span>
-                    </a>
-                    <a href="{{ url_for('del_snippet', snip_id=snippet['snip_id']) }}"
-                        class="btn btn-danger btn-xs" data-title="Supprimer">
-                        <span class="glyphicon glyphicon-trash"></span>
-                    </a>
                 </div>
             {% endfor %}
         {% else %}
@@ -31,7 +23,6 @@
             </p>
         {% endif %}
     </p>
-    <a href="{{ url_for('add_snippet') }}" class="btn btn-default">Ajouter un bout de code</a>
-    <a href="{{ url_for('index') }}" class="btn btn-default">Retour</a>
+    <a href="{{ url_for('upd_step', step_id=step_id) }}" class="btn btn-default">Retour</a>
 </div>
 {% endblock %}

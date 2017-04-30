@@ -658,7 +658,7 @@ def upd_step(step_id):
             for cl_v in cl_vars:
                 p_var = Predef_Var.query.get(cl_v.var_id)
                 cl_v.var_name = p_var.var_name
-            return render_template("upd_step.html", form=form, section_id=section_id, cl_vars=cl_vars)
+            return render_template("upd_step.html", form=form, section_id=section_id, step_id=step_id, cl_vars=cl_vars)
         else:
             flash("L'information n'a pas pu être retrouvée.")
             return redirect(url_for('upd_section', section_id=section_id))
@@ -782,6 +782,14 @@ def list_snippets():
         return redirect(url_for('login'))
     snippets = Code_Snippet.query.order_by(Code_Snippet.code_short).all()
     return render_template('list_snippets.html', snippets=snippets)
+
+
+@app.route('/show_snippets/<int:step_id>')
+def show_snippets(step_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+    snippets = Code_Snippet.query.order_by(Code_Snippet.code_short).all()
+    return render_template('show_snippets.html', snippets=snippets, step_id=step_id)
 
 
 @app.route('/add_snippet', methods=['GET', 'POST'])
