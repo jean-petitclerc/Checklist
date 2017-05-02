@@ -159,6 +159,24 @@ class Code_Snippet(db.Model):
         return '<code_snippet: {}>'.format(self.code_short)
 
 
+class Prepared_Checklist(db.Model):
+    __tablename__ = 'tprep_checklist'
+    prep_cl_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    prep_cl_name = db.Column(db.String(80), nullable=False, unique=True)
+    checklist_id = db.Column(db.Integer)
+    audit_crt_user = db.Column(db.String(80), nullable=False)
+    audit_crt_ts = db.Column(db.DateTime(), nullable=False)
+
+
+class Prepared_Checklist_Var(db.Model):
+    __tablename__ = 'tprep_cl_var'
+    prep_cl_var_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    prep_cl_id = db.Column(db.Integer, nullable=False)
+    var_id = db.Column(db.Integer)
+    var_name = db.Column(db.String(16), nullable=False)
+    var_value = db.Column(db.String(80), nullable=False, default='')
+
+
 # Formulaire web pour l'écran de login
 class LoginForm(FlaskForm):
     email = StringField('Courriel', validators=[DataRequired(), Email(message='Le courriel est invalide.')])
@@ -476,23 +494,41 @@ def show_checklist(checklist_id):
         return redirect(url_for('login'))
     cl = Checklist.query.get(checklist_id)
     if cl:
-        checklist_name = cl.checklist_name
-        checklist_desc = cl.checklist_desc
-        audit_crt_user = cl.audit_crt_user
-        audit_crt_ts = cl.audit_crt_ts
-        audit_upd_user = cl.audit_upd_user
-        audit_upd_ts = cl.audit_upd_ts
-        sections = Section.query.filter_by(checklist_id=checklist_id, deleted_ind='N') \
+        q_sections = Section.query.filter_by(checklist_id=checklist_id, deleted_ind='N') \
             .order_by(Section.section_seq).all()
+        q_cl_vars = Checklist_Var.query.filter_by(checklist_id=checklist_id).all()
+        cl_vars = []
+        for q_cl_v in q_cl_vars:
+            cl_var = dict()
+            q_p_var = Predef_Var.query.get(q_cl_v.var_id)
+            app.logger.debug('var name: ' + q_p_var.var_name)
+            cl_var['name'] = q_p_var.var_name
+            cl_var['desc'] = q_p_var.var_desc
+            cl_vars.append(cl_var)
+
         # l_sections = [ [section_name, [step 1, step 2,...]], [section_name, [step 1, step 2, step 3,...]],...]
-        for section in sections:
-            section_id = section.section_id
-            app.logger.debug('for section in sections: ' + str(section_id) + section.section_name)
-            steps = Step.query.filter_by(checklist_id=checklist_id, section_id=section_id, deleted_ind='N') \
+        sections = []
+        for q_section in q_sections:
+            section = dict()
+            section['id'] = q_section.section_id
+            section['seq'] = q_section.section_seq
+            section['name'] = q_section.section_name
+            section['detail'] = q_section.section_detail
+            q_steps = Step.query.filter_by(checklist_id=checklist_id, section_id=section['id'], deleted_ind='N') \
                 .order_by(Step.step_seq).all()
+            steps = []
+            for q_step in q_steps:
+                step = dict()
+                step['id'] = q_step.step_id
+                step['seq'] = q_step.step_seq
+                step['short'] = q_step.step_short
+                step['detail'] = q_step.step_detail
+                step['user'] = q_step.step_user
+                step['code'] = q_step.step_code
+                steps.append(step)
             section['steps'] = steps
-        return render_template("show_checklist.html", name=checklist_name, desc=checklist_desc, crt_user=audit_crt_user,
-                               crt_ts=audit_crt_ts, upd_user=audit_upd_user, upd_ts=audit_upd_ts, sections=sections)
+            sections.append(section)
+        return render_template("show_checklist.html", cl=cl, cl_vars=cl_vars, sections=sections)
 
     else:
         flash("L'information n'a pas pu être retrouvée.")
