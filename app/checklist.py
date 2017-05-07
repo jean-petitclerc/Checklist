@@ -10,8 +10,7 @@ from contextlib import closing
 from datetime import datetime
 
 # TODO Categorie et sous-categorie
-# TODO Show checklist
-# TODO Code snippets (Embellir la liste, ajouter un bouton pour voir les snippets et revenir.
+# TODO Reviser les validators dans les formulaires
 # TODO Génération de checklists remplies
 # TODO Private variables
 
@@ -163,9 +162,17 @@ class Prepared_Checklist(db.Model):
     __tablename__ = 'tprep_checklist'
     prep_cl_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     prep_cl_name = db.Column(db.String(80), nullable=False, unique=True)
+    prep_cl_desc = db.Column(db.Text)
     checklist_id = db.Column(db.Integer)
     audit_crt_user = db.Column(db.String(80), nullable=False)
     audit_crt_ts = db.Column(db.DateTime(), nullable=False)
+
+    def __init__(self, prep_cl_name, prep_cl_desc, checklist_id, audit_crt_user, audit_crt_ts):
+        self.prep_cl_name = prep_cl_name
+        self.prep_cl_desc = prep_cl_desc
+        self.checklist_id = checklist_id
+        self.audit_crt_user = audit_crt_user
+        self.audit_crt_ts = audit_crt_ts
 
 
 class Prepared_Checklist_Var(db.Model):
@@ -202,20 +209,39 @@ class RegisterForm(FlaskForm):
 
 # Formulaire d'ajout d'une checklist
 class AddChecklistForm(FlaskForm):
-    checklist_name = StringField('Nom de la checklist')
+    checklist_name = StringField('Nom de la checklist', validators=[DataRequired(message='Le nom est requis.')])
     checklist_desc = TextAreaField('Description')
     submit = SubmitField('Ajouter')
 
 
 # Formulaire d'ajout d'une checklist
 class UpdChecklistForm(FlaskForm):
-    checklist_name = StringField('Nom de la checklist')
+    checklist_name = StringField('Nom de la checklist', validators=[DataRequired(message='Le nom est requis.')])
     checklist_desc = TextAreaField('Description')
     submit = SubmitField('Modifier')
 
 
 # Formulaire pour confirmer la suppression d'une checklist
 class DelChecklistForm(FlaskForm):
+    submit = SubmitField('Supprimer')
+
+
+# Formulaire pour ajouter une checklist préparée
+class AddPrepChecklistForm(FlaskForm):
+    prep_cl_name = StringField('Nom', validators=[DataRequired(message='Le nom est requis.')])
+    prep_cl_desc = TextAreaField('Description')
+    submit = SubmitField('Créer')
+
+
+# Formulaire pour modifier une checklist préparée
+class UpdPrepChecklistForm(FlaskForm):
+    prep_cl_name = StringField('Nom', validators=[DataRequired(message='Le nom est requis.')])
+    prep_cl_desc = TextAreaField('Description')
+    submit = SubmitField('Modifier')
+
+
+# Formulaire pour confirmer la suppression d'une checklist préparée
+class DelPrepChecklistForm(FlaskForm):
     submit = SubmitField('Supprimer')
 
 
@@ -489,7 +515,6 @@ def upd_checklist(checklist_id):
 
 @app.route('/show_checklist/<int:checklist_id>')
 def show_checklist(checklist_id):
-    # TODO Review nested data structure and ORM calls
     if not logged_in():
         return redirect(url_for('login'))
     cl = Checklist.query.get(checklist_id)
@@ -533,6 +558,97 @@ def show_checklist(checklist_id):
     else:
         flash("L'information n'a pas pu être retrouvée.")
         return redirect(url_for('list_checklists'))
+
+
+@app.route('/list_prep_checklists')
+def list_prep_checklists():
+    if not logged_in():
+        return redirect(url_for('login'))
+    checklists = Prepared_Checklist.query.order_by(Prepared_Checklist.prep_cl_name).all()
+    return render_template('list_prep_checklists.html', checklists=checklists)
+
+
+@app.route('/add_prep_cl/<int:checklist_id>', methods=['GET', 'POST'])
+def add_prep_cl(checklist_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+    app.logger.debug('Entering add_prep_cl')
+    form = AddPrepChecklistForm()
+    if form.validate_on_submit():
+        prep_cl_name = request.form['prep_cl_name']
+        prep_cl_desc = request.form['prep_cl_desc']
+        prep_cl_id = db_add_prep_cl(prep_cl_name, prep_cl_desc, checklist_id)
+        if prep_cl_id is not None:
+            flash('La nouvelle checklist est ajoutée.')
+            return redirect(url_for('upd_prep_cl', prep_cl_id=prep_cl_id))
+        else:
+            flash('Une erreur de base de données est survenue.')
+            abort(500)
+    else:
+        cl = Checklist.query.get(checklist_id)
+        form.prep_cl_name.data = cl.checklist_name + ' - <Object> - ...'
+        return render_template('add_prep_cl.html', form=form)
+
+
+@app.route('/del_prep_cl/<int:prep_cl_id>', methods=['GET', 'POST'])
+def del_prep_cl(prep_cl_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+    form = DelPrepChecklistForm()
+    if form.validate_on_submit():
+        app.logger.debug('Deleting a prepared checklist')
+        if db_del_prep_cl(prep_cl_id):
+            flash("La checklist a été effacée.")
+        else:
+            flash("Quelque chose n'a pas fonctionné.")
+        return redirect(url_for('list_prep_checklists'))
+    else:
+        cl = Prepared_Checklist.query.get(prep_cl_id)
+        if cl:
+            return render_template('del_prep_cl.html', form=form, name=cl.prep_cl_name)
+        else:
+            flash("L'information n'a pas pu être retrouvée.")
+            return redirect(url_for('list_prep_checklists'))
+
+
+@app.route('/show_prep_checklist/<int:prep_cl_id>')
+def show_prep_checklist(prep_cl_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+    abort(404)
+
+
+@app.route('/upd_prep_cl/<int:prep_cl_id>', methods=['GET', 'POST'])
+def upd_prep_cl(prep_cl_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+    app.logger.debug('Entering upd_prep_cl')
+    form = UpdPrepChecklistForm()
+    if form.validate_on_submit():
+        app.logger.debug('Updating a prepared checklist')
+        prep_cl_name = form.prep_cl_name.data
+        prep_cl_desc = form.prep_cl_desc.data
+        if db_upd_prep_cl(prep_cl_id, prep_cl_name, prep_cl_desc):
+            flash("La checklist a été modifiée.")
+        else:
+            flash("Quelque chose n'a pas fonctionné.")
+        return redirect(url_for('upd_prep_cl', prep_cl_id=prep_cl_id))
+    else:
+        p_cl = Prepared_Checklist.query.get(prep_cl_id)
+        if p_cl:
+            form.prep_cl_name.data = p_cl.prep_cl_name
+            form.prep_cl_desc.data = p_cl.prep_cl_desc
+#            sections = Section.query.filter_by(checklist_id=checklist_id, deleted_ind='N') \
+#                .order_by(Section.section_seq).all()
+#            cl_vars = Checklist_Var.query.filter_by(checklist_id=checklist_id).order_by(Checklist_Var.var_id).all()
+#            for cl_v in cl_vars:
+#                pr_v = Predef_Var.query.get(cl_v.var_id)
+#                cl_v.var_name = pr_v.var_name
+#                cl_v.var_desc = pr_v.var_desc
+            return render_template("upd_prep_cl.html", form=form)
+        else:
+            flash("L'information n'a pas pu être retrouvée.")
+            return redirect(url_for('list_checklists'))
 
 
 @app.route('/add_section', methods=['GET', 'POST'])
@@ -1131,6 +1247,45 @@ def db_renum_step(section_id):
     return True
 
 
+def db_add_prep_cl(prep_cl_name, prep_cl_desc, checklist_id):
+    audit_crt_user = session.get('user_email', None)
+    audit_crt_ts = datetime.now()
+    p_cl = Prepared_Checklist(prep_cl_name, prep_cl_desc, checklist_id, audit_crt_user, audit_crt_ts)
+    try:
+        db.session.add(p_cl)
+        db.session.commit()
+    except Exception as e:
+        app.logger.error('DB Error' + str(e))
+        return None
+    return p_cl.prep_cl_id
+
+
+def db_upd_prep_cl(prep_cl_id, prep_cl_name, prep_cl_desc):
+    p_cl = Prepared_Checklist.query.get(prep_cl_id)
+    p_cl.prep_cl_name = prep_cl_name
+    p_cl.prep_cl_desc = prep_cl_desc
+    try:
+        db.session.commit()
+    except Exception as e:
+        app.logger.error('DB Error' + str(e))
+        return False
+    return True
+
+
+def db_del_prep_cl(prep_cl_id):
+    try:
+        p_cl = Prepared_Checklist.query.get(prep_cl_id)
+        p_cl_vars = Prepared_Checklist_Var.query.filter_by(prep_cl_id=prep_cl_id).all()
+        for p_cl_v in p_cl_vars:
+            db.session.delete(p_cl_v)
+        db.session.delete(p_cl)
+        db.session.commit()
+    except Exception as e:
+        app.logger.error('DB Error' + str(e))
+        return False
+    return True
+
+
 def db_add_var(var_name, var_desc):
     var = Predef_Var(var_name, var_desc)
     try:
@@ -1209,8 +1364,8 @@ def db_del_snippet(snip_id):
     return True
 
 
-def db_upd_snippet(id, code_short, code_text):
-    snippet = Code_Snippet.query.get(id)
+def db_upd_snippet(snip_id, code_short, code_text):
+    snippet = Code_Snippet.query.get(snip_id)
     snippet.code_short = code_short
     snippet.code_text = code_text
     try:

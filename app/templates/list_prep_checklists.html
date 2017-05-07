@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block page_content %}
+<div class="container">
+    <div class="page-header">
+        <h1>Liste des checklists Préparées</h1>
+    </div>
+    <p>
+        {% if checklists %}
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Nom</th>
+                    <th>Créé par</th>
+                    <th>Créé le</th>
+                    <th class="text-center">Modifier</th>
+                    <th class="text-center">Supprimer</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p_cl in checklists %}
+                    <tr>
+                        <td><a href="{{ url_for('show_prep_checklist', prep_cl_id=p_cl['prep_cl_id']) }}">{{ p_cl['prep_cl_name'] }}</a></td>
+                        <td>{{ p_cl['audit_crt_user'] }}</td>
+                        <td>{{ p_cl['audit_crt_ts'] }}</td>
+                        <td class="text-center"><a href="{{ url_for('upd_prep_cl', prep_cl_id=p_cl['prep_cl_id']) }}"
+                            class="btn btn-primary btn-xs" data-title="Modifier"><span class="glyphicon glyphicon-pencil"></span></a></td>
+                        <td class="text-center"><a href="{{ url_for('del_prep_cl', prep_cl_id=p_cl['prep_cl_id']) }}"
+                            class="btn btn-danger btn-xs" data-title="Supprimer"><span class="glyphicon glyphicon-trash"></span></a></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <em>Il n'y a pas de checklist préparée dans la base de données</em>
+            <p>
+                Aller dans la&nbsp<a href="{{ url_for('list_checklists') }}">liste des checklists</a>&nbsp pour en ajouter une.
+            </p>
+        {% endif %}
+    </p>
+    <a href="{{ url_for('list_checklists') }}" class="btn btn-default">Aller à la liste pour préparer une checklist</a>
+    <a href="{{ url_for('index') }}" class="btn btn-default">Retour</a>
+</div>
+{% endblock %}
