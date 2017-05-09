@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block page_content %}
+<div class="container">
+    <div class="page-header">
+        <h1>Checklist: {{ cl.prep_cl_name }}</h1>
+    </div>
+
+    <div class = "panel panel-primary">
+        <div class = "panel-heading">
+            <h2 class = "panel-title">Description</h2>
+        </div>
+
+        <div class = "panel-body">
+            {{ cl.prep_cl_desc }}
+        </div>
+    </div>
+    <h2>Variables utilisées dans cette checklist</h2>
+    {% if cl_vars %}
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Nom</th>
+                    <th>Valeur</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cl_v in  cl_vars %}
+                    <tr>
+                        <td>{{ cl_v['name'] }}</td>
+                        <td>{{ cl_v['value'] }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        Aucune variable utilisée dans cette checklist.
+    {% endif %}
+
+    <h2>Sections:</h2>
+    {% for section in sections %}
+        <h3>Section {{ loop.index }}: {{ section['name'] }}</h3>
+        <div class = "panel panel-primary">
+            <div class = "panel-heading">
+                <h2 class = "panel-title">Description</h2>
+            </div>
+            <div class = "panel-body">
+                {{ section['detail'] }}
+            </div>
+        </div>
+        <h3>Étapes</h3>
+        {% for step in section['steps'] %}
+            <h4>Étape {{ loop.index }}: {{ step['short'] }}</h4>
+            <p>
+                <em>Description:</em>&nbsp;{{ step['detail'] }}<br>
+                <em>Usager:</em>&nbsp;{{ step['user'] }}<br>
+                {% if step['code'] %}
+                    <em>Code:</em><br>
+<pre>
+<code>{{ step['code'] }}</code>
+</pre>
+                {% endif %}
+            </p>
+        {% else %}
+            <p>Pas de step dans cette section</p>
+        {% endfor %}
+    {% else %}
+        <p>Pas de section.</p>
+    {% endfor %}
+    <p>Ajouté par: {{ cl.audit_crt_user }} le {{ cl.audit_crt_ts }}</p>
+    {% if cl.upd_user %}
+        <p>Modifié par: {{ cl.audit_upd_user }} le {{ cl.audit_upd_ts }}</p>
+    {% endif %}
+    <p><a href="{{ url_for('list_prep_checklists') }}">Retour à la liste</a></p>
+</div>
+{% endblock %}

@@ -166,6 +166,7 @@ class Prepared_Checklist(db.Model):
     checklist_id = db.Column(db.Integer)
     audit_crt_user = db.Column(db.String(80), nullable=False)
     audit_crt_ts = db.Column(db.DateTime(), nullable=False)
+    cl_vars = db.relationship('Prepared_Checklist_Var', backref='tprep_checklist', lazy='dynamic')
 
     def __init__(self, prep_cl_name, prep_cl_desc, checklist_id, audit_crt_user, audit_crt_ts):
         self.prep_cl_name = prep_cl_name
@@ -178,10 +179,16 @@ class Prepared_Checklist(db.Model):
 class Prepared_Checklist_Var(db.Model):
     __tablename__ = 'tprep_cl_var'
     prep_cl_var_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    prep_cl_id = db.Column(db.Integer, nullable=False)
+    prep_cl_id = db.Column(db.Integer, db.ForeignKey('tprep_checklist.prep_cl_id'))
     var_id = db.Column(db.Integer)
     var_name = db.Column(db.String(16), nullable=False)
     var_value = db.Column(db.String(80), nullable=False, default='')
+
+    def __init__(self, prep_cl_id, var_id, var_name, var_value):
+        self.prep_cl_id = prep_cl_id
+        self.var_id = var_id
+        self.var_name = var_name
+        self.var_value = var_value
 
 
 # Formulaire web pour l'écran de login
@@ -243,6 +250,12 @@ class UpdPrepChecklistForm(FlaskForm):
 # Formulaire pour confirmer la suppression d'une checklist préparée
 class DelPrepChecklistForm(FlaskForm):
     submit = SubmitField('Supprimer')
+
+
+# Formulaire pour assigner une valeur à une Prepared_Checklist_var
+class UpdPrepChecklistVarForm(FlaskForm):
+    var_value = StringField('Fournir une valeur')
+    submit = SubmitField('Assigner')
 
 
 # Formulaire pour ajouter une section à une checklist
@@ -615,7 +628,53 @@ def del_prep_cl(prep_cl_id):
 def show_prep_checklist(prep_cl_id):
     if not logged_in():
         return redirect(url_for('login'))
-    abort(404)
+    cl = Prepared_Checklist.query.get(prep_cl_id)
+    if cl:
+        q_sections = Section.query.filter_by(checklist_id=cl.checklist_id, deleted_ind='N') \
+            .order_by(Section.section_seq).all()
+        q_cl_vars = Prepared_Checklist_Var.query.filter_by(prep_cl_id=prep_cl_id).all()
+        cl_vars = []
+        for q_cl_v in q_cl_vars:
+            cl_var = dict()
+            q_p_var = Predef_Var.query.get(q_cl_v.var_id)
+            app.logger.debug('var name: ' + q_p_var.var_name)
+            cl_var['name'] = q_cl_v.var_name
+            cl_var['value'] = q_cl_v.var_value
+            cl_vars.append(cl_var)
+
+        # l_sections = [ [section_name, [step 1, step 2,...]], [section_name, [step 1, step 2, step 3,...]],...]
+        sections = []
+        for q_section in q_sections:
+            section = dict()
+            section['id'] = q_section.section_id
+            section['seq'] = q_section.section_seq
+            section['name'] = q_section.section_name
+            section['detail'] = q_section.section_detail
+            q_steps = Step.query.filter_by(checklist_id=cl.checklist_id, section_id=section['id'], deleted_ind='N') \
+                .order_by(Step.step_seq).all()
+            steps = []
+            for q_step in q_steps:
+                step = dict()
+                step['id'] = q_step.step_id
+                step['seq'] = q_step.step_seq
+                step['short'] = q_step.step_short
+                step['detail'] = q_step.step_detail
+                step['user'] = q_step.step_user
+                step['code'] = replace_vars_in_code(q_step.step_code, cl_vars)
+                steps.append(step)
+            section['steps'] = steps
+            sections.append(section)
+        return render_template("show_prep_checklist.html", cl=cl, cl_vars=cl_vars, sections=sections)
+    else:
+        flash("L'information n'a pas pu être retrouvée.")
+        return redirect(url_for('list_prep_checklists'))
+
+
+def replace_vars_in_code(code, vars):
+    for cl_v in vars:
+        if cl_v['value'] is not None:
+            code = code.replace(cl_v['name'], cl_v['value'])
+    return code
 
 
 @app.route('/upd_prep_cl/<int:prep_cl_id>', methods=['GET', 'POST'])
@@ -623,6 +682,7 @@ def upd_prep_cl(prep_cl_id):
     if not logged_in():
         return redirect(url_for('login'))
     app.logger.debug('Entering upd_prep_cl')
+    session['prep_cl_id'] = prep_cl_id
     form = UpdPrepChecklistForm()
     if form.validate_on_submit():
         app.logger.debug('Updating a prepared checklist')
@@ -640,15 +700,44 @@ def upd_prep_cl(prep_cl_id):
             form.prep_cl_desc.data = p_cl.prep_cl_desc
 #            sections = Section.query.filter_by(checklist_id=checklist_id, deleted_ind='N') \
 #                .order_by(Section.section_seq).all()
-#            cl_vars = Checklist_Var.query.filter_by(checklist_id=checklist_id).order_by(Checklist_Var.var_id).all()
+            cl_vars = Prepared_Checklist_Var.query.filter_by(prep_cl_id=prep_cl_id) \
+                .order_by(Prepared_Checklist_Var.var_name).all()
 #            for cl_v in cl_vars:
 #                pr_v = Predef_Var.query.get(cl_v.var_id)
 #                cl_v.var_name = pr_v.var_name
 #                cl_v.var_desc = pr_v.var_desc
-            return render_template("upd_prep_cl.html", form=form)
+            return render_template("upd_prep_cl.html", form=form, cl_vars=cl_vars)
         else:
             flash("L'information n'a pas pu être retrouvée.")
             return redirect(url_for('list_checklists'))
+
+
+@app.route('/upd_prep_cl_var/<int:prep_cl_var_id>', methods=['GET', 'POST'])
+def upd_prep_cl_var(prep_cl_var_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+    prep_cl_id = session['prep_cl_id']
+    form = UpdPrepChecklistVarForm()
+    if form.validate_on_submit():
+        app.logger.debug('Updating a prepared checklist var')
+        var_value = form.var_value.data
+        if db_upd_prep_cl_var(prep_cl_var_id, var_value):
+            flash("La valeur a été assignée.")
+        else:
+            flash("Quelque chose n'a pas fonctionné.")
+        return redirect(url_for('upd_prep_cl', prep_cl_id=prep_cl_id))
+    else:
+        cl_v = Prepared_Checklist_Var.query.get(prep_cl_var_id)
+        var_name = cl_v.var_name
+        pre_v = Predef_Var.query.get(cl_v.var_id)
+        if pre_v:
+            var_desc = pre_v.var_desc
+            form.var_value.data = cl_v.var_value
+            return render_template("upd_prep_cl_var.html", form=form, var_name=var_name, var_desc=var_desc,
+                                   prep_cl_id=prep_cl_id)
+        else:
+            flash("L'information n'a pas pu être retrouvée.")
+            return redirect(url_for('upd_prep_cl', prep_cl_id=prep_cl_id))
 
 
 @app.route('/add_section', methods=['GET', 'POST'])
@@ -1253,6 +1342,13 @@ def db_add_prep_cl(prep_cl_name, prep_cl_desc, checklist_id):
     p_cl = Prepared_Checklist(prep_cl_name, prep_cl_desc, checklist_id, audit_crt_user, audit_crt_ts)
     try:
         db.session.add(p_cl)
+        cl_vars = Checklist_Var.query.filter_by(checklist_id=checklist_id).all()
+        for cl_v in cl_vars:
+            pred_var = Predef_Var.query.filter_by(var_id=cl_v.var_id).first()
+            var_name = pred_var.var_name
+            app.logger.debug(var_name)
+            p_cl_var = Prepared_Checklist_Var(p_cl.prep_cl_id, cl_v.var_id, var_name, None)
+            db.session.add(p_cl_var)
         db.session.commit()
     except Exception as e:
         app.logger.error('DB Error' + str(e))
@@ -1272,10 +1368,22 @@ def db_upd_prep_cl(prep_cl_id, prep_cl_name, prep_cl_desc):
     return True
 
 
+def db_upd_prep_cl_var(prep_cl_var_id, var_value):
+    try:
+        cl_v = Prepared_Checklist_Var.query.get(prep_cl_var_id)
+        cl_v.var_value = var_value
+        db.session.commit()
+    except Exception as e:
+        app.logger.error('DB Error' + str(e))
+        return False
+    return True
+
+
 def db_del_prep_cl(prep_cl_id):
     try:
         p_cl = Prepared_Checklist.query.get(prep_cl_id)
         p_cl_vars = Prepared_Checklist_Var.query.filter_by(prep_cl_id=prep_cl_id).all()
+        # TODO Autres deletes pour les sections et les steps
         for p_cl_v in p_cl_vars:
             db.session.delete(p_cl_v)
         db.session.delete(p_cl)

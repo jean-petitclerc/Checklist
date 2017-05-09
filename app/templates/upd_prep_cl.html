@@ -31,7 +31,36 @@
             {{ render_field(form.prep_cl_desc, class="form-control") }}
         </div>
         <input class="btn btn-default" id="submit" name="submit" type="submit" value="Modifier">
-        <a href="{{ url_for('list_checklists') }}" class="btn btn-default">Annuler</a>
+        <a href="{{ url_for('list_prep_checklists') }}" class="btn btn-default">Annuler</a>
     </form>
+    <h2>Variables</h2>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Nom</th>
+                <th>Valeur</th>
+                <th class="text-center">Assigner</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cl_v in cl_vars %}
+                <tr>
+                    <td>{{ cl_v.var_name }}</td>
+                    {% if cl_v.var_value %}
+                        <td>{{ cl_v.var_value }}</td>
+                    {% else %}
+                        <td><i>Pas de valeur assignée</i></td>
+                    {% endif %}
+                    <td class="text-center">
+                        <a href="{{ url_for('upd_prep_cl_var', prep_cl_var_id=cl_v['prep_cl_var_id']) }}"
+                           class="btn btn-primary btn-xs" data-title="Modifier">
+                            <span class="glyphicon glyphicon-pencil"></span>
+                        </a>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
 </div>
 {% endblock %}
