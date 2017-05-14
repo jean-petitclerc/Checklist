@@ -698,14 +698,8 @@ def upd_prep_cl(prep_cl_id):
         if p_cl:
             form.prep_cl_name.data = p_cl.prep_cl_name
             form.prep_cl_desc.data = p_cl.prep_cl_desc
-#            sections = Section.query.filter_by(checklist_id=checklist_id, deleted_ind='N') \
-#                .order_by(Section.section_seq).all()
             cl_vars = Prepared_Checklist_Var.query.filter_by(prep_cl_id=prep_cl_id) \
                 .order_by(Prepared_Checklist_Var.var_name).all()
-#            for cl_v in cl_vars:
-#                pr_v = Predef_Var.query.get(cl_v.var_id)
-#                cl_v.var_name = pr_v.var_name
-#                cl_v.var_desc = pr_v.var_desc
             return render_template("upd_prep_cl.html", form=form, cl_vars=cl_vars)
         else:
             flash("L'information n'a pas pu être retrouvée.")
