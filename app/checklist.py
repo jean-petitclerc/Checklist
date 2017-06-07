@@ -191,6 +191,52 @@ class Prepared_Checklist_Var(db.Model):
         self.var_value = var_value
 
 
+class Prepared_CL_Section(db.Model):
+    __tablename__ = 'tprep_cl_section'
+    prep_cl_sect_id = db.Column(db.Integer(), primary_key=True, autoincrement=True)
+    prep_cl_id = db.Column(db.Integer(), db.ForeignKey('tprep_checklist.prep_cl_id'))
+    section_id = db.Column(db.Integer(), nullable=False)
+    section_seq = db.Column(db.Integer(), nullable=False)
+    section_name = db.Column(db.String(100), nullable=False, default='')
+    section_detail = db.Column(db.Text(), nullable=False, default='')
+    steps = db.relationship('Prepared_CL_Step', backref='tprep_cl_section', lazy='dynamic')
+
+    def __init__(self, prep_cl_id, section_id, section_seq, section_name, section_detail):
+        self.prep_cl_id = prep_cl_id
+        self.section_id = section_id
+        self.section_seq = section_seq
+        self.section_name = section_name
+        self.section_detail = section_detail
+
+    def __repr__(self):
+        return '<prep_section {}>'.format(self.section_name)
+
+
+class Prepared_CL_Step(db.Model):
+    __tablename__ = 'tprep_cl_step'
+    prep_cl_step_id = db.Column(db.Integer(), primary_key=True, autoincrement=True)
+    prep_cl_sect_id = db.Column(db.Integer(), db.ForeignKey('tprep_cl_section.prep_cl_sect_id'))
+    step_id = db.Column(db.Integer(), nullable=False)
+    step_seq = db.Column(db.Integer(), nullable=False)
+    step_short = db.Column(db.String(100), nullable=False, default='')
+    step_detail = db.Column(db.Text(), nullable=True)
+    step_user = db.Column(db.String(16), nullable=True)
+    step_code = db.Column(db.Text(), nullable=True)
+    status_ind = db.Column(db.String(1), nullable=False, default='N')
+
+    def __init__(self, prep_cl_sect_id, step_id, step_seq, step_short, step_detail, step_user, step_code):
+        self.prep_cl_sect_id = prep_cl_sect_id
+        self.step_id = step_id
+        self.step_seq = step_seq
+        self.step_short = step_short
+        self.step_detail = step_detail
+        self.step_user = step_user
+        self.step_code = step_code
+
+    def __repr__(self):
+        return '<prep_step {}>'.format(self.step_short)
+
+
 # Formulaire web pour l'écran de login
 class LoginForm(FlaskForm):
     email = StringField('Courriel', validators=[DataRequired(), Email(message='Le courriel est invalide.')])
