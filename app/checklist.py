@@ -9,10 +9,15 @@ from flask_sqlalchemy import SQLAlchemy
 from contextlib import closing
 from datetime import datetime
 
-# TODO Categorie et sous-categorie
+# TODO Categorie et sous-categorie ou des tags
 # TODO Reviser les validators dans les formulaires
 # TODO Génération de checklists remplies
 # TODO Private variables
+# TODO Rafraichir une checklist préparée
+# TODO Etapes optionelles
+# TODO Sélectionner bout de code quand on ajoute une étape
+# TODO Modifier le code dans une checklist préparée
+# TODO print pdf
 
 app = Flask(__name__)
 manager = Manager(app)
@@ -120,6 +125,7 @@ class Predef_Var(db.Model):
     var_name = db.Column(db.String(16), nullable=False, unique=True)
     var_desc = db.Column(db.Text(), nullable=True)
     checklists = db.relationship('Checklist_Var', backref='tpredef_var', lazy='dynamic')
+    snippets = db.relationship('Code_Snippet_Var', backref='tpredef_var', lazy='dynamic')
 
 
     def __init__(self, var_name, var_desc):
@@ -147,15 +153,39 @@ class Checklist_Var(db.Model):
 class Code_Snippet(db.Model):
     __tablename__ = 'tcode_snippet'
     snip_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
-    code_short = db.Column(db.String(80), unique=True)
-    code_text = db.Column(db.Text)
+    snip_name = db.Column(db.String(100), nullable=False, unique=True)
+    snip_desc = db.Column(db.Text(), nullable=False, default='')
+    snip_code = db.Column(db.Text)
+    audit_crt_user = db.Column(db.String(80), nullable=False)
+    audit_crt_ts = db.Column(db.DateTime(), nullable=False)
+    audit_upd_user = db.Column(db.String(80), nullable=True)
+    audit_upd_ts = db.Column(db.DateTime(), nullable=True)
+    deleted_ind = db.Column(db.String(1), nullable=False, default='N')
+    snip_vars = db.relationship('Code_Snippet_Var', backref='tcode_snippet', lazy='dynamic')
 
-    def __init__(self, code_short, code_text):
-        self.code_short = code_short
-        self.code_text = code_text
+    def __init__(self, snip_name, snip_desc, snip_code, audit_crt_user, audit_crt_ts):
+        self.snip_name = snip_name
+        self.snip_desc = snip_desc
+        self.snip_code = snip_code
+        self.audit_crt_user = audit_crt_user
+        self.audit_crt_ts = audit_crt_ts
 
     def __repr__(self):
-        return '<code_snippet: {}>'.format(self.code_short)
+        return '<code_snippet: {}>'.format(self.snip_name)
+
+
+class Code_Snippet_Var(db.Model):
+    __tablename__ = 'tcode_snippet_var'
+    snip_var_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    snip_id = db.Column(db.Integer, db.ForeignKey('tcode_snippet.snip_id'))
+    var_id = db.Column(db.Integer, db.ForeignKey('tpredef_var.var_id'))
+
+    def __init__(self, snip_id, var_id):
+        self.snip_id = snip_id
+        self.var_id = var_id
+
+    def __repr__(self):
+        return '<code_snippet_var: {}:{}>'.format(self.snip_id, self.var_id)
 
 
 class Prepared_Checklist(db.Model):
@@ -371,15 +401,17 @@ class DelVarForm(FlaskForm):
 
 # Formulaire pour ajouter un bout de code
 class AddSnippetForm(FlaskForm):
-    code_short = StringField('Courte description')
-    code_text = TextAreaField('Code')
+    snip_name = StringField('Nom')
+    snip_desc = TextAreaField('Courte description')
+    snip_code = TextAreaField('Code')
     submit = SubmitField('Ajouter')
 
 
 # Formulaire pour ajouter un bout de code
 class UpdSnippetForm(FlaskForm):
-    code_short = StringField('Courte description')
-    code_text = TextAreaField('Code')
+    snip_name = StringField('Nom')
+    snip_desc = TextAreaField('Courte description')
+    snip_code = TextAreaField('Code')
     submit = SubmitField('Modifier')
 
 
@@ -1061,16 +1093,25 @@ def del_cl_var(checklist_id, var_id):
 def list_snippets():
     if not logged_in():
         return redirect(url_for('login'))
-    snippets = Code_Snippet.query.order_by(Code_Snippet.code_short).all()
+    snippets = Code_Snippet.query.order_by(Code_Snippet.snip_name).all()
     return render_template('list_snippets.html', snippets=snippets)
 
 
-@app.route('/show_snippets/<int:step_id>')
-def show_snippets(step_id):
+@app.route('/list_snippets_short')
+def list_snippets_short():
     if not logged_in():
         return redirect(url_for('login'))
-    snippets = Code_Snippet.query.order_by(Code_Snippet.code_short).all()
-    return render_template('show_snippets.html', snippets=snippets, step_id=step_id)
+    snippets = Code_Snippet.query.order_by(Code_Snippet.snip_name).all()
+    return render_template('list_snippets_short.html', snippets=snippets)
+
+
+@app.route('/show_snippet/<int:snip_id>')
+def show_snippet(snip_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+
+    snippet = Code_Snippet.query.filter_by(snip_id=snip_id).first()
+    return render_template('show_snippet.html', snippet=snippet, snip_id=snip_id)
 
 
 @app.route('/add_snippet', methods=['GET', 'POST'])
@@ -1080,9 +1121,10 @@ def add_snippet():
     app.logger.debug('Entering add_snippet')
     form = AddSnippetForm()
     if form.validate_on_submit():
-        code_short = request.form['code_short']
-        code_text = request.form['code_text']
-        if db_add_snippet(code_short, code_text):
+        snip_name = request.form['snip_name']
+        snip_desc = request.form['snip_desc']
+        snip_code = request.form['snip_code']
+        if db_add_snippet(snip_name, snip_desc, snip_code):
             flash('Le nouveau bout de code est ajouté.')
             return redirect(url_for('list_snippets'))
         else:
@@ -1098,9 +1140,10 @@ def upd_snippet(snip_id):
     form = UpdSnippetForm()
     if form.validate_on_submit():
         app.logger.debug('Updating a snippet')
-        code_short = form.code_short.data
-        code_text = form.code_text.data
-        if db_upd_snippet(snip_id, code_short, code_text):
+        snip_name = form.snip_name.data
+        snip_desc = form.snip_desc.data
+        snip_code = form.snip_code.data
+        if db_upd_snippet(snip_id, snip_name, snip_desc, snip_code):
             flash("Le bout de code a été modifié.")
         else:
             flash("Quelque chose n'a pas fonctionné.")
@@ -1108,8 +1151,9 @@ def upd_snippet(snip_id):
     else:
         snippet = Code_Snippet.query.get(snip_id)
         if snippet:
-            form.code_short.data = snippet.code_short
-            form.code_text.data = snippet.code_text
+            form.snip_name.data = snippet.snip_name
+            form.snip_desc.data = snippet.snip_desc
+            form.snip_code.data = snippet.snip_code
             return render_template("upd_snippet.html", form=form)
         else:
             flash("L'information n'a pas pu être retrouvée.")
@@ -1490,8 +1534,10 @@ def db_del_cl_var(checklist_id, var_id):
     return True
 
 
-def db_add_snippet(code_short, code_text):
-    snippet = Code_Snippet(code_short, code_text)
+def db_add_snippet(snip_name, snip_desc, snip_code):
+    audit_crt_user = session.get('user_email', None)
+    audit_crt_ts = datetime.now()
+    snippet = Code_Snippet(snip_name, snip_desc, snip_code, audit_crt_user, audit_crt_ts)
     try:
         db.session.add(snippet)
         db.session.commit()
@@ -1512,10 +1558,14 @@ def db_del_snippet(snip_id):
     return True
 
 
-def db_upd_snippet(snip_id, code_short, code_text):
+def db_upd_snippet(snip_id, snip_name, snip_desc, snip_code):
+    audit_user = session.get('user_email', None)
     snippet = Code_Snippet.query.get(snip_id)
-    snippet.code_short = code_short
-    snippet.code_text = code_text
+    snippet.snip_name = snip_name
+    snippet.snip_desc = snip_desc
+    snippet.snip_code = snip_code
+    snippet.audit_upd_user = audit_user
+    snippet.audit_upd_ts = datetime.now()
     try:
         db.session.commit()
     except Exception as e:

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block page_content %}
+<div class="container">
+    <div class="page-header">
+        <h1>Liste des Snippets</h1>
+    </div>
+    <p>
+        {% if snippets %}
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Nom</th>
+                    <th>Créé par</th>
+                    <th>Créé le</th>
+                    <th class="text-center">Modifier</th>
+                    <th class="text-center">Supprimer</th>
+                    <th class="text-center">Préparer</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for snippet in snippets %}
+                    <tr>
+                        <td><a href="{{ url_for('show_snippet', snip_id=snippet['snip_id']) }}">{{ snippet['snip_name'] }}</a></td>
+                        <td>{{ snippet['audit_crt_user'] }}</td>
+                        <td>{{ snippet['audit_crt_ts'] }}</td>
+                        <td class="text-center"><a href="{{ url_for('upd_snippet', snip_id=snippet['snip_id']) }}"
+                            class="btn btn-primary btn-xs" data-title="Modifier"><span class="glyphicon glyphicon-pencil"></span></a></td>
+                        <td class="text-center"><a href="{{ url_for('del_snippet', snip_id=snippet['snip_id']) }}"
+                            class="btn btn-danger btn-xs" data-title="Supprimer"><span class="glyphicon glyphicon-trash"></span></a></td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+            <em>Il n'y a pas de snippet dans la base de données</em>
+            <p>
+                Cliquer&nbsp<a href="{{ url_for('add_snippet') }}">ici</a>&nbsp pour en ajouter un.
+            </p>
+        {% endif %}
+    </p>
+
+    <a href="{{ url_for('add_snippet') }}" class="btn btn-default">Ajouter un snippet</a>
+    <a href="{{ url_for('index') }}" class="btn btn-default">Retour</a>
+</div>
+{% endblock %}

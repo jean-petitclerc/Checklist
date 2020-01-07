@@ -8,6 +8,7 @@ create index ix_step_01 on tcl_step(checklist_id, section_id, step_seq);
 
 create unique index ix_cl_var_01 on tcl_var(checklist_id, var_id);
 create unique index ix_cl_var_02 on tcl_var(var_id, checklist_id);
+create unique index ix_snip_var_01 on tcode_snippet_var(snip_id, var_id);
 
 -----------
 

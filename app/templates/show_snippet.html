@@ -2,11 +2,10 @@
 {% block page_content %}
 <div class="container">
     <div class="page-header">
-        <h1>Liste des Snippets</h1>
+        <h1>Affiche un Snippet</h1>
     </div>
     <p>
-        {% if snippets %}
-            {% for snippet in snippets %}
+        {% if snippet %}
                 <div class="panel panel-default">
                     <div class="panel-heading">
                         <h2 class="panel-title">{{ snippet['snip_name'] }}</h2>
@@ -17,16 +16,10 @@
                     <div class="panel-body">
                         <pre><code>{{ snippet['snip_code'] }}</code></pre>
                     </div>
-                    <a href="{{ url_for('upd_snippet', snip_id=snippet['snip_id']) }}"
-                        class="btn btn-primary btn-xs" data-title="Modifier">
-                        <span class="glyphicon glyphicon-pencil"></span>
-                    </a>
-                    <a href="{{ url_for('del_snippet', snip_id=snippet['snip_id']) }}"
-                        class="btn btn-danger btn-xs" data-title="Supprimer">
-                        <span class="glyphicon glyphicon-trash"></span>
-                    </a>
+                    <div class="panel-body">
+                        Créé par {{ snippet['audit_crt_user'] }} le {{ snippet['audit_crt_ts'] }}
+                    </div>
                 </div>
-            {% endfor %}
         {% else %}
             <em>Il n'y a pas de snippet dans la base de données</em>
             <p>
@@ -34,7 +27,6 @@
             </p>
         {% endif %}
     </p>
-    <a href="{{ url_for('add_snippet') }}" class="btn btn-default">Ajouter un snippet</a>
-    <a href="{{ url_for('index') }}" class="btn btn-default">Retour</a>
+    <a href="{{ url_for('list_snippets_short') }}" class="btn btn-default">Retour</a>
 </div>
 {% endblock %}
