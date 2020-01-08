@@ -2,30 +2,42 @@
 {% block page_content %}
 <div class="container">
     <div class="page-header">
-        <h1>Affiche un Snippet</h1>
+        <h1>Snippet: {{ snippet['snip_name'] }}</h1>
     </div>
-    <p>
-        {% if snippet %}
-                <div class="panel panel-default">
-                    <div class="panel-heading">
-                        <h2 class="panel-title">{{ snippet['snip_name'] }}</h2>
-                    </div>
-                    <div class="panel-body">
-                        {{ snippet['snip_desc'] }}
-                    </div>
-                    <div class="panel-body">
-                        <pre><code>{{ snippet['snip_code'] }}</code></pre>
-                    </div>
-                    <div class="panel-body">
-                        Créé par {{ snippet['audit_crt_user'] }} le {{ snippet['audit_crt_ts'] }}
-                    </div>
-                </div>
-        {% else %}
-            <em>Il n'y a pas de snippet dans la base de données</em>
-            <p>
-                Cliquer&nbsp<a href="{{ url_for('add_snippet') }}">ici</a>&nbsp pour en ajouter un.
-            </p>
-        {% endif %}
+    <div class = "panel panel-primary">
+         <div class="panel-body">
+              {{ snippet['snip_desc'] }}
+         </div>
+         <div class="panel-body">
+              <pre><code>{{ snippet['snip_code'] }}</code></pre>
+         </div>
+    </div>
+    <h2>Variables utilisées dans ce snippet</h2>
+    {% if snip_vars %}
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>Nom</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for snip_var in  snip_vars %}
+                    <tr>
+                        <td>{{ snip_var['name'] }}</td>
+                        <td>{{ snip_var['desc'] }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        Aucune variable utilisée dans ce snippet.
+    {% endif %}
+
+    <p>Ajouté par: {{ snippet.audit_crt_user }} le {{ snippet.audit_crt_ts }}</p>
+    {% if snippet.upd_user %}
+        <p>Modifié par: {{ snippet.audit_upd_user }} le {{ snippet.audit_upd_ts }}</p>
+    {% endif %}
     </p>
     <a href="{{ url_for('list_snippets_short') }}" class="btn btn-default">Retour</a>
 </div>

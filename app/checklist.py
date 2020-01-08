@@ -1064,6 +1064,19 @@ def sel_cl_vars(checklist_id):
     return render_template('sel_cl_vars.html', checklist_id=checklist_id, s_vars=s_vars)
 
 
+@app.route('/sel_snip_vars/<int:snip_id>')
+def sel_snip_vars(snip_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+    l_vars = Predef_Var.query.order_by(Predef_Var.var_name).all()
+    s_vars = []
+    for p_var in l_vars:
+        c_var = Code_Snippet_Var.query.filter_by(snip_id=snip_id, var_id=p_var.var_id).first()
+        if c_var is None:
+            s_vars.append(p_var)
+    return render_template('sel_snip_vars.html', snip_id=snip_id, s_vars=s_vars)
+
+
 @app.route('/add_cl_var/<int:checklist_id>/<int:var_id>')
 def add_cl_var(checklist_id, var_id):
     if not logged_in():
@@ -1074,6 +1087,18 @@ def add_cl_var(checklist_id, var_id):
         flash('Une erreur de base de données est survenue.')
         abort(500)
     return redirect(url_for('upd_checklist', checklist_id=checklist_id))
+
+
+@app.route('/add_snip_var/<int:snip_id>/<int:var_id>')
+def add_snip_var(snip_id, var_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+    if db_add_snip_var(snip_id, var_id):
+        flash('La nouvelle variable est ajoutée au snippet.')
+    else:
+        flash('Une erreur de base de données est survenue.')
+        abort(500)
+    return redirect(url_for('upd_snippet', snip_id=snip_id))
 
 
 @app.route('/del_cl_var/<int:checklist_id>/<int:var_id>')
@@ -1087,6 +1112,19 @@ def del_cl_var(checklist_id, var_id):
         db.session.delete(cl_v)
         db.session.commit()
     return redirect(url_for('upd_checklist', checklist_id=checklist_id))
+
+
+@app.route('/del_snip_var/<int:snip_id>/<int:var_id>')
+def del_snip_var(snip_id, var_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+    snip_var = Code_Snippet_Var.query.filter_by(snip_id=snip_id, var_id=var_id).first()
+    if snip_var is None:
+        flash("L'information n'a pas pu être retrouvée.")
+    else:
+        db.session.delete(snip_var)
+        db.session.commit()
+    return redirect(url_for('upd_snippet', snip_id=snip_id))
 
 
 @app.route('/list_snippets')
@@ -1111,7 +1149,20 @@ def show_snippet(snip_id):
         return redirect(url_for('login'))
 
     snippet = Code_Snippet.query.filter_by(snip_id=snip_id).first()
-    return render_template('show_snippet.html', snippet=snippet, snip_id=snip_id)
+    if snippet:
+        q_snip_vars = Code_Snippet_Var.query.filter_by(snip_id=snip_id).all()
+        snip_vars = []
+        for q_snip_var in q_snip_vars:
+            snip_var = dict()
+            q_p_var = Predef_Var.query.get(q_snip_var.var_id)
+            #app.logger.debug('var name: ' + q_p_var.var_name)
+            snip_var['name'] = q_p_var.var_name
+            snip_var['desc'] = q_p_var.var_desc
+            snip_vars.append(snip_var)
+        return render_template('show_snippet.html', snippet=snippet, snip_id=snip_id, snip_vars=snip_vars)
+    else:
+        flash("L'information n'a pas pu être retrouvée.")
+        return redirect(url_for('list_snippets_short'))
 
 
 @app.route('/add_snippet', methods=['GET', 'POST'])
@@ -1154,7 +1205,12 @@ def upd_snippet(snip_id):
             form.snip_name.data = snippet.snip_name
             form.snip_desc.data = snippet.snip_desc
             form.snip_code.data = snippet.snip_code
-            return render_template("upd_snippet.html", form=form)
+            snip_vars = Code_Snippet_Var.query.filter_by(snip_id=snip_id).order_by(Code_Snippet_Var.var_id).all()
+            for snip_var in snip_vars:
+                pr_v = Predef_Var.query.get(snip_var.var_id)
+                snip_var.var_name = pr_v.var_name
+                snip_var.var_desc = pr_v.var_desc
+            return render_template("upd_snippet.html", form=form, snip_id=snip_id, snip_vars=snip_vars)
         else:
             flash("L'information n'a pas pu être retrouvée.")
             return redirect(url_for('list_snippets'))
@@ -1516,6 +1572,17 @@ def db_add_cl_var(checklist_id, var_id):
     cl_v = Checklist_Var(checklist_id, var_id)
     try:
         db.session.add(cl_v)
+        db.session.commit()
+    except Exception as e:
+        app.logger.error('DB Error' + str(e))
+        return False
+    return True
+
+
+def db_add_snip_var(snip_id, var_id):
+    snip_var = Code_Snippet_Var(snip_id, var_id)
+    try:
+        db.session.add(snip_var)
         db.session.commit()
     except Exception as e:
         app.logger.error('DB Error' + str(e))

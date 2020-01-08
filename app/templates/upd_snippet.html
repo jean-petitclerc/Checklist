@@ -36,5 +36,40 @@
         <input class="btn btn-default" id="submit" name="submit" type="submit" value="Modifier">
         <a href="{{ url_for('list_snippets') }}" class="btn btn-default">Annuler</a>
     </form>
+    <p>
+        <h2>Variables</h2>
+        {% if snip_vars %}
+            <table class="table table-bordered">
+                <thead>
+                    <tr>
+                        <th>Nom</th>
+                        <th>Description</th>
+                        <th class="text-center">Supprimer</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for snip_var in snip_vars %}
+                        <tr>
+                            <td>{{ snip_var['var_name'] }}</td>
+                            <td>{{ snip_var['var_desc'] }}</td>
+                            <td class="text-center">
+                                <a href="{{ url_for('del_snip_var', snip_id=snip_id, var_id=snip_var['var_id']) }}"
+                                   class="btn btn-danger btn-xs"  data-title="Supprimer">
+                                   <span class="glyphicon glyphicon-trash"></span>
+                                </a>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <em>Il n'y a pas de variable dans cette liste.</em>
+            <p>
+                Cliquer&nbsp<a href="{{ url_for('sel_snip_vars', snip_id=snip_id) }}">ici</a>&nbsp pour en ajouter une.
+            </p>
+        {% endif %}
+    </p>
+    <a href="{{ url_for('sel_snip_vars', snip_id=snip_id) }}" class="btn btn-default">Ajouter une variable</a>
+    <a href="{{ url_for('list_snippets_short') }}" class="btn btn-default">Retour</a>
 </div>
 {% endblock %}
