@@ -681,6 +681,28 @@ def add_prep_cl(checklist_id):
         return render_template('add_prep_cl.html', form=form)
 
 
+@app.route('/add_prep_snip/<int:snip_id>', methods=['GET', 'POST'])
+def add_prep_snip(snip_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+    app.logger.debug('Entering add_prep_snip')
+    #form = AddPrepChecklistForm()
+    #if form.validate_on_submit():
+    #    prep_cl_name = request.form['prep_cl_name']
+    #    prep_cl_desc = request.form['prep_cl_desc']
+    #    prep_cl_id = db_add_prep_cl(prep_cl_name, prep_cl_desc, checklist_id)
+    #    if prep_cl_id is not None:
+    #        flash('La nouvelle checklist est ajoutée.')
+    #        return redirect(url_for('upd_prep_cl', prep_cl_id=prep_cl_id))
+    #    else:
+    #        flash('Une erreur de base de données est survenue.')
+    #        abort(500)
+    #else:
+    #    cl = Checklist.query.get(checklist_id)
+    #    form.prep_cl_name.data = cl.checklist_name + ' - <Object> - ...'
+    #    return render_template('add_prep_cl.html', form=form)
+
+
 @app.route('/del_prep_cl/<int:prep_cl_id>', methods=['GET', 'POST'])
 def del_prep_cl(prep_cl_id):
     if not logged_in():
@@ -1231,8 +1253,8 @@ def del_snippet(snip_id):
     else:
         snippet = Code_Snippet.query.get(snip_id)
         if snippet:
-            code_short = snippet.code_short
-            return render_template('del_snippet.html', form=form, name=code_short)
+            snip_name = snippet.snip_name
+            return render_template('del_snippet.html', form=form, name=snip_name)
         else:
             flash("L'information n'a pas pu être retrouvée.")
             return redirect(url_for('list_snippets'))
@@ -1616,7 +1638,10 @@ def db_add_snippet(snip_name, snip_desc, snip_code):
 
 def db_del_snippet(snip_id):
     snippet = Code_Snippet.query.get(snip_id)
+    snip_vars = Code_Snippet_Var.query.filter_by(snip_id=snip_id).order_by(Code_Snippet_Var.var_id).all()
     try:
+        for snip_var in snip_vars:
+            db.session.delete(snip_var)
         db.session.delete(snippet)
         db.session.commit()
     except Exception as e:
