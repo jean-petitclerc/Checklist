@@ -27,7 +27,7 @@
                             class="btn btn-primary btn-xs" data-title="Modifier"><span class="glyphicon glyphicon-pencil"></span></a></td>
                         <td class="text-center"><a href="{{ url_for('del_snippet', snip_id=snippet['snip_id']) }}"
                             class="btn btn-danger btn-xs" data-title="Supprimer"><span class="glyphicon glyphicon-trash"></span></a></td>
-                        <td class="text-center"><a href="{{ url_for('add_prep_snip', snip_id=snippet['snip_id']) }}"
+                        <td class="text-center"><a href="{{ url_for('add_prep_snippet', snip_id=snippet['snip_id']) }}"
                             class="btn btn-success btn-xs" data-title="Préparer"><span class="glyphicon glyphicon-play"></span></a></td>
                     </tr>
                 {% endfor %}

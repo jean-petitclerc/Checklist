@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% macro render_field(field) %}
+    <div class="form-group">
+        {{ field.label(class="control-label") }}
+        {{ field(**kwargs)|safe }}
+        {% if field.errors %}
+            <ul class=errors>
+            {% for error in field.errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    </div>
+{% endmacro %}
+
+{% block page_content %}
+<div class="container">
+    <div class="page-header">
+        <h1>Modifier un Snippet Préparé</h1>
+    </div>
+
+    <form class="form" method="post" role="form">
+        {{ form.hidden_tag() }}
+        {{ wtf.form_errors(form, hiddens="only") }}
+        <div class="form-group ">
+            {{ render_field(form.prep_snip_name, class="form-control") }}
+        </div>
+        <div class="form-group ">
+            {{ render_field(form.prep_snip_desc, class="form-control") }}
+        </div>
+        <input class="btn btn-default" id="submit" name="submit" type="submit" value="Modifier">
+        <a href="{{ url_for('list_prep_snippets') }}" class="btn btn-default">Annuler</a>
+    </form>
+    <h2>Variables</h2>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Nom</th>
+                <th>Valeur</th>
+                <th class="text-center">Assigner</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p_snip_var in p_snip_vars %}
+                <tr>
+                    <td>{{ p_snip_var.var_name }}</td>
+                    {% if p_snip_var.var_value %}
+                        <td>{{ p_snip_var.var_value }}</td>
+                    {% else %}
+                        <td><i>Pas de valeur assignée</i></td>
+                    {% endif %}
+                    <td class="text-center">
+                        <a href="{{ url_for('upd_prep_snip_var', prep_snip_var_id=p_snip_var['prep_snip_var_id']) }}"
+                           class="btn btn-primary btn-xs" data-title="Modifier">
+                            <span class="glyphicon glyphicon-pencil"></span>
+                        </a>
+                    </td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="{{ url_for('list_prep_checklists') }}" class="btn btn-default">Retour</a>
+
+</div>
+{% endblock %}
