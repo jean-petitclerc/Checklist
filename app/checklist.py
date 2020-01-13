@@ -286,6 +286,9 @@ class Prepared_Snippet(db.Model):
         self.audit_crt_user = audit_crt_user
         self.audit_crt_ts = audit_crt_ts
 
+    def __repr__(self):
+        return '<prep_snippet {}>'.format(self.prep_snip_name)
+
 
 class Prepared_Snippet_Var(db.Model):
     __tablename__ = 'tprep_snip_var'
@@ -363,6 +366,11 @@ class DelPrepChecklistForm(FlaskForm):
     submit = SubmitField('Supprimer')
 
 
+# Formulaire pour confirmer la suppression d'une checklist préparée
+class DelPrepSnippetForm(FlaskForm):
+    submit = SubmitField('Supprimer')
+
+
 # Formulaire pour assigner une valeur à une Prepared_Checklist_var
 class UpdPrepChecklistVarForm(FlaskForm):
     var_value = StringField('Fournir une valeur')
@@ -380,8 +388,14 @@ class AddPrepSnippettForm(FlaskForm):
 class UpdPrepSnippetForm(FlaskForm):
     prep_snip_name = StringField('Nom', validators=[DataRequired(message='Le nom est requis.')])
     prep_snip_desc = TextAreaField('Description')
-    prep_snip_code = TextAreaField('Code')
+    prep_snip_code = TextAreaField('Code Préparé')
     submit = SubmitField('Modifier')
+
+
+# Formulaire pour assigner une valeur à une Prepared_Checklist_var
+class UpdPrepSnippetVarForm(FlaskForm):
+    var_value = StringField('Fournir une valeur')
+    submit = SubmitField('Assigner')
 
 
 # Formulaire pour ajouter une section à une checklist
@@ -748,7 +762,12 @@ def add_prep_snippet(snip_id):
     if form.validate_on_submit():
         prep_snip_name = request.form['prep_snip_name']
         prep_snip_desc = request.form['prep_snip_desc']
-        prep_snip_id = db_add_prep_snip(prep_snip_name, prep_snip_desc, snip_id)
+        snippet = Code_Snippet.query.get(snip_id)
+        if snippet:
+            prep_snip_code = snippet.snip_code
+        else:
+            prep_snip_code = " "
+        prep_snip_id = db_add_prep_snip(prep_snip_name, prep_snip_desc, prep_snip_code, snip_id)
         if prep_snip_id is not None:
             flash('Le nouveau snippet est ajouté.')
             return redirect(url_for('upd_prep_snippet', prep_snip_id=prep_snip_id))
@@ -758,6 +777,7 @@ def add_prep_snippet(snip_id):
     else:
         snippet = Code_Snippet.query.get(snip_id)
         form.prep_snip_name.data = snippet.snip_name + ' - <Object> - ...'
+        form.prep_snip_desc.data = snippet.snip_desc
         return render_template('add_prep_snip.html', form=form)
 
 
@@ -781,20 +801,65 @@ def upd_prep_snippet(prep_snip_id):
     else:
         p_snip = Prepared_Snippet.query.get(prep_snip_id)
         if p_snip:
+            snippet = Code_Snippet.query.get(p_snip.snip_id)
             form.prep_snip_name.data = p_snip.prep_snip_name
             form.prep_snip_desc.data = p_snip.prep_snip_desc
             form.prep_snip_code.data = p_snip.prep_snip_code
             p_snip_vars = Prepared_Snippet_Var.query.filter_by(prep_snip_id=prep_snip_id) \
                 .order_by(Prepared_Snippet_Var.var_name).all()
-            return render_template("upd_prep_snip.html", form=form, p_snip_vars=p_snip_vars)
+            return render_template("upd_prep_snip.html", form=form, p_snip_vars=p_snip_vars, snippet=snippet)
         else:
             flash("L'information n'a pas pu être retrouvée.")
             return redirect(url_for('list_snippets_short'))
 
 
+@app.route('/upd_prep_snippet_var/<int:prep_snip_var_id>', methods=['GET', 'POST'])
+def upd_prep_snippet_var(prep_snip_var_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+    prep_snip_id = session['prep_snip_id']
+    form = UpdPrepSnippetVarForm()
+    if form.validate_on_submit():
+        app.logger.debug('Updating a prepared snippet var')
+        var_value = form.var_value.data
+        if db_upd_prep_snip_var(prep_snip_var_id, var_value, prep_snip_id):
+            flash("La valeur a été assignée.")
+        else:
+            flash("Quelque chose n'a pas fonctionné.")
+        return redirect(url_for('upd_prep_snippet', prep_snip_id=prep_snip_id))
+    else:
+        p_snip_var = Prepared_Snippet_Var.query.get(prep_snip_var_id)
+        var_name = p_snip_var.var_name
+        pred_var = Predef_Var.query.get(p_snip_var.var_id)
+        if pred_var:
+            var_desc = pred_var.var_desc
+            form.var_value.data = p_snip_var.var_value
+            return render_template("upd_prep_snip_var.html", form=form, var_name=var_name, var_desc=var_desc,
+                                   prep_snip_id=prep_snip_id)
+        else:
+            flash("L'information n'a pas pu être retrouvée.")
+            return redirect(url_for('upd_prep_snippet', prep_snip_id=prep_snip_id))
+
+
 @app.route('/del_prep_snippet/<int:prep_snip_id>', methods=['GET', 'POST'])
 def del_prep_snippet(prep_snip_id):
-    return
+    if not logged_in():
+        return redirect(url_for('login'))
+    form = DelPrepSnippetForm()
+    if form.validate_on_submit():
+        app.logger.debug('Deleting a prepared snippet')
+        if db_del_prep_snip(prep_snip_id):
+            flash("Le snippet a été effacé.")
+        else:
+            flash("Quelque chose n'a pas fonctionné.")
+        return redirect(url_for('list_prep_snippets'))
+    else:
+        p_snip = Prepared_Snippet.query.get(prep_snip_id)
+        if p_snip:
+            return render_template('del_prep_snip.html', form=form, name=p_snip.prep_snip_name)
+        else:
+            flash("L'information n'a pas pu être retrouvée.")
+            return redirect(url_for('list_prep_snippets'))
 
 
 @app.route('/show_prep_snippet/<int:prep_snip_id>', methods=['GET', 'POST'])
@@ -802,10 +867,12 @@ def show_prep_snippet(prep_snip_id):
     if not logged_in():
         return redirect(url_for('login'))
     p_snip = Prepared_Snippet.query.get(prep_snip_id)
+    #app.logger.debug('Prep_Snippet: ' + str(p_snip))
     if p_snip:
         q_snip_vars = Prepared_Snippet_Var.query.filter_by(prep_snip_id=prep_snip_id).all()
         p_snip_vars = []
         for q_snip_var in q_snip_vars:
+            app.logger.debug('q_snip_var:' + str(q_snip_var.var_id))
             p_snip_var = dict()
             q_p_var = Predef_Var.query.get(q_snip_var.var_id)
             app.logger.debug('var name: ' + q_p_var.var_name)
@@ -1782,10 +1849,10 @@ def db_upd_snippet(snip_id, snip_name, snip_desc, snip_code):
     return True
 
 
-def db_add_prep_snip(prep_snip_name, prep_snip_desc, snip_id):
+def db_add_prep_snip(prep_snip_name, prep_snip_desc, prep_snip_code, snip_id):
     audit_crt_user = session.get('user_email', None)
     audit_crt_ts = datetime.now()
-    p_snip = Prepared_Snippet(prep_snip_name, prep_snip_desc, None, snip_id, audit_crt_user, audit_crt_ts)
+    p_snip = Prepared_Snippet(prep_snip_name, prep_snip_desc, prep_snip_code, snip_id, audit_crt_user, audit_crt_ts)
     try:
         db.session.add(p_snip)
         snip_vars = Code_Snippet_Var.query.filter_by(snip_id=snip_id).all()
@@ -1813,6 +1880,47 @@ def db_upd_prep_snip(prep_snip_id, prep_snip_name, prep_snip_desc, prep_snip_cod
         app.logger.error('DB Error' + str(e))
         return False
     return True
+
+
+def db_upd_prep_snip_var(prep_snip_var_id, var_value, prep_snip_id):
+    try:
+        p_snip_var = Prepared_Snippet_Var.query.get(prep_snip_var_id)
+        p_snip_var.var_value = var_value
+        db.session.commit()
+
+        p_snip = Prepared_Snippet.query.get(prep_snip_id)
+        snippet = Code_Snippet.query.get(p_snip.snip_id)
+        p_snip_vars = Prepared_Snippet_Var.query.filter_by(prep_snip_id=prep_snip_id).all()
+        new_code = snippet.snip_code
+        new_name = snippet.snip_name
+        for p_snip_var in p_snip_vars:
+            if p_snip_var.var_value is not None:
+                new_code = new_code.replace(p_snip_var.var_name, p_snip_var.var_value)
+                new_name = new_name + ' - ' + p_snip_var.var_value
+            else:
+                new_name = new_name + ' - ' + p_snip_var.var_name
+        p_snip.prep_snip_code = new_code + "\n#--Version précédente--------------------\n" + p_snip.prep_snip_code
+        p_snip.prep_snip_name = new_name
+        db.session.commit()
+    except Exception as e:
+        app.logger.error('DB Error' + str(e))
+        return False
+    return True
+
+
+def db_del_prep_snip(prep_snip_id):
+    try:
+        p_snip = Prepared_Snippet.query.get(prep_snip_id)
+        p_snip_vars = Prepared_Snippet_Var.query.filter_by(prep_snip_id=prep_snip_id).all()
+        for p_snip_var in p_snip_vars:
+            db.session.delete(p_snip_var)
+        db.session.delete(p_snip)
+        db.session.commit()
+    except Exception as e:
+        app.logger.error('DB Error' + str(e))
+        return False
+    return True
+
 
 # Start the server for the application
 if __name__ == '__main__':

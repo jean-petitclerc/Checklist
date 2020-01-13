@@ -30,9 +30,19 @@
         <div class="form-group ">
             {{ render_field(form.prep_snip_desc, class="form-control") }}
         </div>
+        <div class="form-group ">
+            {{ render_field(form.prep_snip_code, class="form-control", rows="10", style="font-family:monospace;") }}
+        </div>
         <input class="btn btn-default" id="submit" name="submit" type="submit" value="Modifier">
         <a href="{{ url_for('list_prep_snippets') }}" class="btn btn-default">Annuler</a>
     </form>
+
+    <h2>Code Modèle:</h2>
+    <div class = "panel-body">
+        <pre><code>{{ snippet.snip_code }}</code></pre>
+    </div>
+
+
     <h2>Variables</h2>
     <table class="table table-bordered">
         <thead>
@@ -52,7 +62,7 @@
                         <td><i>Pas de valeur assignée</i></td>
                     {% endif %}
                     <td class="text-center">
-                        <a href="{{ url_for('upd_prep_snip_var', prep_snip_var_id=p_snip_var['prep_snip_var_id']) }}"
+                        <a href="{{ url_for('upd_prep_snippet_var', prep_snip_var_id=p_snip_var['prep_snip_var_id']) }}"
                            class="btn btn-primary btn-xs" data-title="Modifier">
                             <span class="glyphicon glyphicon-pencil"></span>
                         </a>

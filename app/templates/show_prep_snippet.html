@@ -37,11 +37,12 @@
     {% endif %}
 
     <h2>Code:</h2>
-    <pre>
-        <div class = "panel-body">
+    <div class = "panel-body">
+        <pre>
             <code>{{ p_snip.prep_snip_code }}</code>
-        </div>
-    </pre>
+        </pre>
+    </div>
+
     <p>Ajouté par: {{ p_snip.audit_crt_user }} le {{ p_snip.audit_crt_ts }}</p>
     {% if p_snip.upd_user %}
         <p>Modifié par: {{ p_snip.audit_upd_user }} le {{ p_snip.audit_upd_ts }}</p>

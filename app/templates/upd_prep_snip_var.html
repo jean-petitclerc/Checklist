@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% macro render_field(field) %}
+    <div class="form-group">
+        {{ field.label(class="control-label") }}
+        {{ field(**kwargs)|safe }}
+        {% if field.errors %}
+            <ul class=errors>
+            {% for error in field.errors %}
+                <li>{{ error }}</li>
+            {% endfor %}
+            </ul>
+        {% endif %}
+    </div>
+{% endmacro %}
+
+{% block page_content %}
+<div class="container">
+    <div class="page-header">
+        <h1>Assigner une Valeur à une Variable</h1>
+    </div>
+
+    <form class="form" method="post" role="form">
+        {{ form.hidden_tag() }}
+        {{ wtf.form_errors(form, hiddens="only") }}
+        <h2>Variable</h2>
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <h2 class="panel-title">{{ var_name }}</h2>
+            </div>
+            <div class="panel-body">{{ var_desc }}</div>
+        </div>
+        <div class="form-group ">
+            {{ render_field(form.var_value, class="form-control") }}
+        </div>
+        <input class="btn btn-default" id="submit" name="submit" type="submit" value="Assigner">
+        <a href="{{ url_for('upd_prep_snippet', prep_snip_id=prep_snip_id) }}" class="btn btn-default">Annuler</a>
+    </form>
+</div>
+{% endblock %}
