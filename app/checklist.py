@@ -273,6 +273,7 @@ class Prepared_Snippet(db.Model):
     prep_snip_name = db.Column(db.String(80), nullable=False, unique=True)
     prep_snip_desc = db.Column(db.Text)
     prep_snip_code = db.Column(db.Text)
+    prep_snip_rslt = db.Column(db.Text)
     snip_id = db.Column(db.Integer)
     audit_crt_user = db.Column(db.String(80), nullable=False)
     audit_crt_ts = db.Column(db.DateTime(), nullable=False)
