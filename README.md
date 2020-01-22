@@ -19,7 +19,6 @@ Les checklists doivent permettrent des subtitutions de variables. Pour le moment
 
 Sous app, créer un dossier config et un dossier data
 Dans le dossier config créer config.py et y mettre le contenu suivant (éditer)
-
 DATABASE='app/data/checklist.db'
 SQLALCHEMY_DATABASE_URI = 'sqlite:///data/checklist.db'
 SQLALCHEMY_TRACK_MODIFICATIONS=False
@@ -28,15 +27,15 @@ DEBUG=True
 
 ## Installation
 
-Avec Python 3, créer un environnement virtuel venv
+Avec Python 3, créer un environnement virtuel
 Ajouter les packages listés dans requirements.txt
 Créer la database
-. venv/bin/activate
+. <venv>/bin/activate
 cd app
 python
 from checklist import db
 db.create_all()
 
 ## Exécution dans l'environnement de développement
-. venv/bin/activate
+. <venv>/bin/activate
 python checklist.py runserver
