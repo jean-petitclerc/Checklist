@@ -390,6 +390,7 @@ class UpdPrepSnippetForm(FlaskForm):
     prep_snip_name = StringField('Nom', validators=[DataRequired(message='Le nom est requis.')])
     prep_snip_desc = TextAreaField('Description')
     prep_snip_code = TextAreaField('Code Préparé')
+    prep_snip_rslt = TextAreaField('Résultats')
     submit = SubmitField('Modifier')
 
 
@@ -794,7 +795,8 @@ def upd_prep_snippet(prep_snip_id):
         prep_snip_name = form.prep_snip_name.data
         prep_snip_desc = form.prep_snip_desc.data
         prep_snip_code = form.prep_snip_code.data
-        if db_upd_prep_snip(prep_snip_id, prep_snip_name, prep_snip_desc, prep_snip_code):
+        prep_snip_rslt = form.prep_snip_rslt.data
+        if db_upd_prep_snip(prep_snip_id, prep_snip_name, prep_snip_desc, prep_snip_code, prep_snip_rslt):
             flash("Le snippet a été modifié.")
         else:
             flash("Quelque chose n'a pas fonctionné.")
@@ -806,6 +808,7 @@ def upd_prep_snippet(prep_snip_id):
             form.prep_snip_name.data = p_snip.prep_snip_name
             form.prep_snip_desc.data = p_snip.prep_snip_desc
             form.prep_snip_code.data = p_snip.prep_snip_code
+            form.prep_snip_rslt.data = p_snip.prep_snip_rslt
             p_snip_vars = Prepared_Snippet_Var.query.filter_by(prep_snip_id=prep_snip_id) \
                 .order_by(Prepared_Snippet_Var.var_name).all()
             return render_template("upd_prep_snip.html", form=form, p_snip_vars=p_snip_vars, snippet=snippet)
@@ -1870,11 +1873,12 @@ def db_add_prep_snip(prep_snip_name, prep_snip_desc, prep_snip_code, snip_id):
     return p_snip.prep_snip_id
 
 
-def db_upd_prep_snip(prep_snip_id, prep_snip_name, prep_snip_desc, prep_snip_code):
+def db_upd_prep_snip(prep_snip_id, prep_snip_name, prep_snip_desc, prep_snip_code, prep_snip_rslt):
     p_snip = Prepared_Snippet.query.get(prep_snip_id)
     p_snip.prep_snip_name = prep_snip_name
     p_snip.prep_snip_desc = prep_snip_desc
     p_snip.prep_snip_code = prep_snip_code
+    p_snip.prep_snip_rslt = prep_snip_rslt
     try:
         db.session.commit()
     except Exception as e:
