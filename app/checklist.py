@@ -1407,7 +1407,7 @@ def upd_snippet(snip_id):
             flash("Le bout de code a été modifié.")
         else:
             flash("Quelque chose n'a pas fonctionné.")
-        return redirect(url_for('list_snippets'))
+        return redirect(url_for('list_snippets_short'))
     else:
         snippet = Code_Snippet.query.get(snip_id)
         if snippet:
@@ -1422,7 +1422,7 @@ def upd_snippet(snip_id):
             return render_template("upd_snippet.html", form=form, snip_id=snip_id, snip_vars=snip_vars)
         else:
             flash("L'information n'a pas pu être retrouvée.")
-            return redirect(url_for('list_snippets'))
+            return redirect(url_for('list_snippets_short'))
 
 
 @app.route('/del_snippet/<int:snip_id>', methods=['GET', 'POST'])
