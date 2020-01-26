@@ -378,6 +378,12 @@ class UpdPrepChecklistVarForm(FlaskForm):
     submit = SubmitField('Assigner')
 
 
+# Formulaire pour la mise à jour d'une section
+class UpdPrepChecklistSectionForm(FlaskForm):
+    section_detail = TextAreaField('Description')
+    submit = SubmitField('Modifier')
+
+
 # Formulaire pour ajouter une checklist préparée
 class AddPrepSnippettForm(FlaskForm):
     prep_snip_name = StringField('Nom', validators=[DataRequired(message='Le nom est requis.')])
@@ -917,8 +923,8 @@ def show_prep_checklist(prep_cl_id):
         return redirect(url_for('login'))
     cl = Prepared_Checklist.query.get(prep_cl_id)
     if cl:
-        q_sections = Section.query.filter_by(checklist_id=cl.checklist_id, deleted_ind='N') \
-            .order_by(Section.section_seq).all()
+        q_sections = Prepared_CL_Section.query.filter_by(prep_cl_id=prep_cl_id) \
+            .order_by(Prepared_CL_Section.section_seq).all()
         q_cl_vars = Prepared_Checklist_Var.query.filter_by(prep_cl_id=prep_cl_id).all()
         cl_vars = []
         for q_cl_v in q_cl_vars:
@@ -937,8 +943,8 @@ def show_prep_checklist(prep_cl_id):
             section['seq'] = q_section.section_seq
             section['name'] = q_section.section_name
             section['detail'] = q_section.section_detail
-            q_steps = Step.query.filter_by(checklist_id=cl.checklist_id, section_id=section['id'], deleted_ind='N') \
-                .order_by(Step.step_seq).all()
+            q_steps = Prepared_CL_Step.query.filter_by(prep_cl_sect_id=q_section.section_id) \
+                .order_by(Prepared_CL_Step.step_seq).all()
             steps = []
             for q_step in q_steps:
                 step = dict()
@@ -947,7 +953,8 @@ def show_prep_checklist(prep_cl_id):
                 step['short'] = q_step.step_short
                 step['detail'] = q_step.step_detail
                 step['user'] = q_step.step_user
-                step['code'] = replace_vars_in_code(q_step.step_code, cl_vars)
+                #step['code'] = replace_vars_in_code(q_step.step_code, cl_vars)
+                step['code'] = q_step.step_code
                 steps.append(step)
             section['steps'] = steps
             sections.append(section)
@@ -987,10 +994,58 @@ def upd_prep_cl(prep_cl_id):
             form.prep_cl_desc.data = p_cl.prep_cl_desc
             cl_vars = Prepared_Checklist_Var.query.filter_by(prep_cl_id=prep_cl_id) \
                 .order_by(Prepared_Checklist_Var.var_name).all()
-            return render_template("upd_prep_cl.html", form=form, cl_vars=cl_vars)
+            q_sections = Prepared_CL_Section.query.filter_by(prep_cl_id=prep_cl_id) \
+                .order_by(Prepared_CL_Section.section_seq).all()
+            sections = []
+            for q_section in q_sections:
+                section = dict()
+                section['prep_cl_sect_id'] = q_section.prep_cl_sect_id
+                section['seq'] = q_section.section_seq
+                section['name'] = q_section.section_name
+                section['detail'] = q_section.section_detail
+                q_steps = Prepared_CL_Step.query.filter_by(prep_cl_sect_id=q_section.section_id) \
+                    .order_by(Prepared_CL_Step.step_seq).all()
+                steps = []
+                for q_step in q_steps:
+                    step = dict()
+                    step['id'] = q_step.step_id
+                    step['seq'] = q_step.step_seq
+                    step['short'] = q_step.step_short
+                    step['detail'] = q_step.step_detail
+                    step['user'] = q_step.step_user
+                    step['code'] = q_step.step_code
+                    steps.append(step)
+                section['steps'] = steps
+                sections.append(section)
+            return render_template("upd_prep_cl.html", form=form, p_cl=p_cl, cl_vars=cl_vars, sections=sections)
         else:
             flash("L'information n'a pas pu être retrouvée.")
             return redirect(url_for('list_checklists'))
+
+
+@app.route('/upd_prep_cl_section/<int:prep_cl_sect_id>', methods=['GET', 'POST'])
+def upd_prep_cl_section(prep_cl_sect_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+    prep_cl_id = session['prep_cl_id']
+    form = UpdPrepChecklistSectionForm()
+    if form.validate_on_submit():
+        app.logger.debug('Updating a prepared checklist var')
+        section_detail = form.section_detail.data
+        if db_upd_prep_cl_sect(prep_cl_sect_id, section_detail):
+            flash("La valeur a été assignée.")
+        else:
+            flash("Quelque chose n'a pas fonctionné.")
+        return redirect(url_for('upd_prep_cl', prep_cl_id=prep_cl_id))
+    else:
+        cl_sect = Prepared_CL_Section.query.get(prep_cl_sect_id)
+        if cl_sect:
+            form.section_detail.data = cl_sect.section_detail
+            return render_template("upd_prep_cl_sect.html", form=form, cl_sect=cl_sect,
+                                   prep_cl_id=prep_cl_id)
+        else:
+            flash("L'information n'a pas pu être retrouvée.")
+            return redirect(url_for('upd_prep_cl', prep_cl_id=prep_cl_id))
 
 
 @app.route('/upd_prep_cl_var/<int:prep_cl_var_id>', methods=['GET', 'POST'])
@@ -1698,6 +1753,17 @@ def db_add_prep_cl(prep_cl_name, prep_cl_desc, checklist_id):
             app.logger.debug(var_name)
             p_cl_var = Prepared_Checklist_Var(p_cl.prep_cl_id, cl_v.var_id, var_name, None)
             db.session.add(p_cl_var)
+        cl_sections = Section.query.filter_by(checklist_id=checklist_id, deleted_ind='N').all()
+        for cl_sect in cl_sections:
+            p_cl_sect = Prepared_CL_Section(p_cl.prep_cl_id, cl_sect.section_id, cl_sect.section_seq,
+                                            cl_sect.section_name, cl_sect.section_detail)
+            db.session.add(p_cl_sect)
+            cl_steps = Step.query.filter_by(checklist_id=checklist_id, section_id=cl_sect.section_id, deleted_ind='N').all()
+            for cl_step in cl_steps:
+                p_cl_step = Prepared_CL_Step(p_cl_sect.section_id, cl_step.step_id, cl_step.step_seq,
+                                             cl_step.step_short, cl_step.step_detail, cl_step.step_user,
+                                             cl_step.step_code)
+                db.session.add(p_cl_step)
         db.session.commit()
     except Exception as e:
         app.logger.error('DB Error' + str(e))
@@ -1721,6 +1787,17 @@ def db_upd_prep_cl_var(prep_cl_var_id, var_value):
     try:
         cl_v = Prepared_Checklist_Var.query.get(prep_cl_var_id)
         cl_v.var_value = var_value
+        db.session.commit()
+    except Exception as e:
+        app.logger.error('DB Error' + str(e))
+        return False
+    return True
+
+
+def db_upd_prep_cl_sect(prep_cl_sect_id, section_detail):
+    try:
+        cl_sect = Prepared_CL_Section.query.get(prep_cl_sect_id)
+        cl_sect.section_detail = section_detail
         db.session.commit()
     except Exception as e:
         app.logger.error('DB Error' + str(e))

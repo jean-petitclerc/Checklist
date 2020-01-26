@@ -61,6 +61,41 @@
             {% endfor %}
         </tbody>
     </table>
+
+    <h2>Sections:</h2>
+    {% for section in sections %}
+        <h3>Section {{ loop.index }}: {{ section['name'] }}</h3>
+        <div class = "panel panel-primary">
+            <div class = "panel-heading">
+                <h2 class = "panel-title">Description</h2>
+            </div>
+            <div class = "panel-body">
+                {{ section['detail'] }}
+            </div>
+        </div>
+        <a href="{{ url_for('upd_prep_cl_section', prep_cl_sect_id=section['prep_cl_sect_id']) }}"
+           class="btn btn-default">Modifier cette section</a>
+        <h3>Étapes</h3>
+        {% for step in section['steps'] %}
+            <h4>Étape {{ loop.index }}: {{ step['short'] }}</h4>
+            <p>
+                <em>Description:</em>&nbsp;{{ step['detail'] }}<br>
+                <em>Usager:</em>&nbsp;{{ step['user'] }}<br>
+                {% if step['code'] %}
+                    <em>Code:</em><br>
+<pre>
+<code>{{ step['code'] }}</code>
+</pre>
+                {% endif %}
+            </p>
+        {% else %}
+            <p>Pas de step dans cette section</p>
+        {% endfor %}
+    {% else %}
+        <p>Pas de section.</p>
+    {% endfor %}
+    <p>Ajouté par: {{ p_cl.audit_crt_user }} le {{ p_cl.audit_crt_ts }}</p>
+
     <a href="{{ url_for('list_prep_checklists') }}" class="btn btn-default">Retour</a>
     <p>&nbsp;</p>
 </div>
