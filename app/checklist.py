@@ -384,6 +384,14 @@ class UpdPrepChecklistSectionForm(FlaskForm):
     submit = SubmitField('Modifier')
 
 
+# Formulaire pour la mise à jour d'une étape
+class UpdPrepChecklistStepForm(FlaskForm):
+    step_detail = TextAreaField('Description')
+    step_user = StringField('Usager à utiliser pour ce step')
+    step_code = TextAreaField('Code')
+    submit = SubmitField('Modifier')
+
+
 # Formulaire pour ajouter une checklist préparée
 class AddPrepSnippettForm(FlaskForm):
     prep_snip_name = StringField('Nom', validators=[DataRequired(message='Le nom est requis.')])
@@ -1003,12 +1011,12 @@ def upd_prep_cl(prep_cl_id):
                 section['seq'] = q_section.section_seq
                 section['name'] = q_section.section_name
                 section['detail'] = q_section.section_detail
-                q_steps = Prepared_CL_Step.query.filter_by(prep_cl_sect_id=q_section.section_id) \
+                q_steps = Prepared_CL_Step.query.filter_by(prep_cl_sect_id=q_section.prep_cl_sect_id) \
                     .order_by(Prepared_CL_Step.step_seq).all()
                 steps = []
                 for q_step in q_steps:
                     step = dict()
-                    step['id'] = q_step.step_id
+                    step['prep_cl_step_id'] = q_step.prep_cl_step_id
                     step['seq'] = q_step.step_seq
                     step['short'] = q_step.step_short
                     step['detail'] = q_step.step_detail
@@ -1033,7 +1041,7 @@ def upd_prep_cl_section(prep_cl_sect_id):
         app.logger.debug('Updating a prepared checklist var')
         section_detail = form.section_detail.data
         if db_upd_prep_cl_sect(prep_cl_sect_id, section_detail):
-            flash("La valeur a été assignée.")
+            flash("La section a été mise à jour.")
         else:
             flash("Quelque chose n'a pas fonctionné.")
         return redirect(url_for('upd_prep_cl', prep_cl_id=prep_cl_id))
@@ -1042,6 +1050,35 @@ def upd_prep_cl_section(prep_cl_sect_id):
         if cl_sect:
             form.section_detail.data = cl_sect.section_detail
             return render_template("upd_prep_cl_sect.html", form=form, cl_sect=cl_sect,
+                                   prep_cl_id=prep_cl_id)
+        else:
+            flash("L'information n'a pas pu être retrouvée.")
+            return redirect(url_for('upd_prep_cl', prep_cl_id=prep_cl_id))
+
+
+@app.route('/upd_prep_cl_step/<int:prep_cl_step_id>', methods=['GET', 'POST'])
+def upd_prep_cl_step(prep_cl_step_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+    prep_cl_id = session['prep_cl_id']
+    form = UpdPrepChecklistStepForm()
+    if form.validate_on_submit():
+        app.logger.debug('Updating a prepared checklist var')
+        step_detail = form.step_detail.data
+        step_user = form.step_user.data
+        step_code = form.step_code.data
+        if db_upd_prep_cl_step(prep_cl_step_id, step_detail, step_user, step_code):
+            flash("L'étape a été mise à jour.")
+        else:
+            flash("Quelque chose n'a pas fonctionné.")
+        return redirect(url_for('upd_prep_cl', prep_cl_id=prep_cl_id))
+    else:
+        cl_step = Prepared_CL_Step.query.get(prep_cl_step_id)
+        if cl_step:
+            form.step_detail.data = cl_step.step_detail
+            form.step_user.data = cl_step.step_user
+            form.step_code.data = cl_step.step_code
+            return render_template("upd_prep_cl_step.html", form=form, cl_step=cl_step,
                                    prep_cl_id=prep_cl_id)
         else:
             flash("L'information n'a pas pu être retrouvée.")
@@ -1798,6 +1835,18 @@ def db_upd_prep_cl_sect(prep_cl_sect_id, section_detail):
     try:
         cl_sect = Prepared_CL_Section.query.get(prep_cl_sect_id)
         cl_sect.section_detail = section_detail
+        db.session.commit()
+    except Exception as e:
+        app.logger.error('DB Error' + str(e))
+        return False
+    return True
+
+
+def db_upd_prep_cl_step(prep_cl_step_id, step_detail, step_user, step_code):
+    try:
+        cl_step = Prepared_CL_Step.query.get(prep_cl_step_id)
+        cl_step.step_detail = step_detail
+        cl_step.step_code = step_code
         db.session.commit()
     except Exception as e:
         app.logger.error('DB Error' + str(e))

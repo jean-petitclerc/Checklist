@@ -87,6 +87,8 @@
 <code>{{ step['code'] }}</code>
 </pre>
                 {% endif %}
+                <a href="{{ url_for('upd_prep_cl_step', prep_cl_step_id=step['prep_cl_step_id']) }}"
+                    class="btn btn-default">Modifier cette étape</a>
             </p>
         {% else %}
             <p>Pas de step dans cette section</p>
