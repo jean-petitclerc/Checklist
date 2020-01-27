@@ -1113,6 +1113,17 @@ def upd_prep_cl_var(prep_cl_var_id):
             return redirect(url_for('upd_prep_cl', prep_cl_id=prep_cl_id))
 
 
+@app.route('/upd_prep_cl_app_vars/<int:prep_cl_id>', methods=['GET', 'POST'])
+def upd_prep_cl_app_vars(prep_cl_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+    if db_upd_prep_cl_app_vars(prep_cl_id):
+        flash("Les valeurs ont été appliquées.")
+    else:
+        flash("Quelque chose n'a pas fonctionné.")
+    return redirect(url_for('upd_prep_cl', prep_cl_id=prep_cl_id))
+
+
 @app.route('/add_section', methods=['GET', 'POST'])
 def add_section():
     if not logged_in():
@@ -1824,6 +1835,27 @@ def db_upd_prep_cl_var(prep_cl_var_id, var_value):
     try:
         cl_v = Prepared_Checklist_Var.query.get(prep_cl_var_id)
         cl_v.var_value = var_value
+        db.session.commit()
+    except Exception as e:
+        app.logger.error('DB Error' + str(e))
+        return False
+    return True
+
+
+def db_upd_prep_cl_app_vars(prep_cl_id):
+    try:
+        p_cl_sections = Prepared_CL_Section.query.filter_by(prep_cl_id=prep_cl_id).all()
+        for p_cl_sect in p_cl_sections:
+            p_cl_steps = Prepared_CL_Step.query.filter_by(prep_cl_sect_id=p_cl_sect.prep_cl_sect_id)
+            for p_cl_step in p_cl_steps:
+                cl_step = Step.query.get(p_cl_step.step_id)
+                if cl_step.step_code is not None:
+                    new_code = cl_step.step_code
+                    p_cl_vars = Prepared_Checklist_Var.query.filter_by(prep_cl_id=prep_cl_id).all()
+                    for p_cl_var in p_cl_vars:
+                        if p_cl_var.var_value is not None:
+                            new_code = new_code.replace(p_cl_var.var_name, p_cl_var.var_value)
+                    p_cl_step.step_code = new_code + "\n#--Version précédente--------------------\n" + p_cl_step.step_code
         db.session.commit()
     except Exception as e:
         app.logger.error('DB Error' + str(e))

@@ -61,6 +61,8 @@
             {% endfor %}
         </tbody>
     </table>
+    <a href="{{ url_for('upd_prep_cl_app_vars', prep_cl_id=p_cl['prep_cl_id']) }}"
+           class="btn btn-default">Appliquer les valeurs au code</a>
 
     <h2>Sections:</h2>
     {% for section in sections %}
