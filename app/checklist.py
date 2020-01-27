@@ -252,6 +252,7 @@ class Prepared_CL_Step(db.Model):
     step_detail = db.Column(db.Text(), nullable=True)
     step_user = db.Column(db.String(16), nullable=True)
     step_code = db.Column(db.Text(), nullable=True)
+    step_rslt = db.Column(db.Text(), nullable=True)
     status_ind = db.Column(db.String(1), nullable=False, default='N')
 
     def __init__(self, prep_cl_sect_id, step_id, step_seq, step_short, step_detail, step_user, step_code):
@@ -271,9 +272,9 @@ class Prepared_Snippet(db.Model):
     __tablename__ = 'tprep_snippet'
     prep_snip_id = db.Column(db.Integer, primary_key=True, autoincrement=True)
     prep_snip_name = db.Column(db.String(80), nullable=False, unique=True)
-    prep_snip_desc = db.Column(db.Text)
-    prep_snip_code = db.Column(db.Text)
-    prep_snip_rslt = db.Column(db.Text)
+    prep_snip_desc = db.Column(db.Text())
+    prep_snip_code = db.Column(db.Text())
+    prep_snip_rslt = db.Column(db.Text(), nullable=True)
     snip_id = db.Column(db.Integer)
     audit_crt_user = db.Column(db.String(80), nullable=False)
     audit_crt_ts = db.Column(db.DateTime(), nullable=False)
