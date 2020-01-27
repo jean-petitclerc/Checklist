@@ -825,7 +825,7 @@ def upd_prep_snippet(prep_snip_id):
             form.prep_snip_rslt.data = p_snip.prep_snip_rslt
             p_snip_vars = Prepared_Snippet_Var.query.filter_by(prep_snip_id=prep_snip_id) \
                 .order_by(Prepared_Snippet_Var.var_name).all()
-            return render_template("upd_prep_snip.html", form=form, p_snip_vars=p_snip_vars, snippet=snippet)
+            return render_template("upd_prep_snip.html", form=form, p_snip=p_snip, p_snip_vars=p_snip_vars, snippet=snippet)
         else:
             flash("L'information n'a pas pu être retrouvée.")
             return redirect(url_for('list_snippets_short'))
@@ -857,6 +857,17 @@ def upd_prep_snippet_var(prep_snip_var_id):
         else:
             flash("L'information n'a pas pu être retrouvée.")
             return redirect(url_for('upd_prep_snippet', prep_snip_id=prep_snip_id))
+
+
+@app.route('/upd_prep_snippet_app_vars/<int:prep_snip_id>', methods=['GET', 'POST'])
+def upd_prep_snippet_app_vars(prep_snip_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+    if db_upd_prep_snip_app_vars(prep_snip_id):
+        flash("Les valeurs ont été appliquées.")
+    else:
+        flash("Quelque chose n'a pas fonctionné.")
+    return redirect(url_for('upd_prep_snippet', prep_snip_id=prep_snip_id))
 
 
 @app.route('/del_prep_snippet/<int:prep_snip_id>', methods=['GET', 'POST'])
@@ -2050,20 +2061,22 @@ def db_upd_prep_snip_var(prep_snip_var_id, var_value, prep_snip_id):
         p_snip_var = Prepared_Snippet_Var.query.get(prep_snip_var_id)
         p_snip_var.var_value = var_value
         db.session.commit()
+    except Exception as e:
+        app.logger.error('DB Error' + str(e))
+        return False
+    return True
 
+
+def db_upd_prep_snip_app_vars(prep_snip_id):
+    try:
         p_snip = Prepared_Snippet.query.get(prep_snip_id)
         snippet = Code_Snippet.query.get(p_snip.snip_id)
         p_snip_vars = Prepared_Snippet_Var.query.filter_by(prep_snip_id=prep_snip_id).all()
         new_code = snippet.snip_code
-        new_name = snippet.snip_name
         for p_snip_var in p_snip_vars:
             if p_snip_var.var_value is not None:
                 new_code = new_code.replace(p_snip_var.var_name, p_snip_var.var_value)
-                new_name = new_name + ' - ' + p_snip_var.var_value
-            else:
-                new_name = new_name + ' - ' + p_snip_var.var_name
         p_snip.prep_snip_code = new_code + "\n#--Version précédente--------------------\n" + p_snip.prep_snip_code
-        p_snip.prep_snip_name = new_name
         db.session.commit()
     except Exception as e:
         app.logger.error('DB Error' + str(e))
