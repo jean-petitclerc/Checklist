@@ -1343,6 +1343,14 @@ def del_var(var_id):
         pre_v = Predef_Var.query.get(var_id)
         if pre_v:
             var_name = pre_v.var_name
+            used_in_checklist = Checklist_Var.query.filter_by(var_id=var_id).first()
+            if used_in_checklist:
+                flash("Cette variable prédéfinie est utilisée dans une checklist. Elle ne peut pas être supprimée.")
+                return redirect(url_for('list_vars'))
+            used_in_snippet = Code_Snippet_Var.query.filter_by(var_id=var_id).first()
+            if used_in_snippet:
+                flash("Cette variable prédéfinie est utilisée dans un snippet. Elle ne peut pas être supprimée.")
+                return redirect(url_for('list_vars'))
             return render_template('del_var.html', form=form, name=var_name)
         else:
             flash("L'information n'a pas pu être retrouvée.")
@@ -1555,6 +1563,10 @@ def del_snippet(snip_id):
         snippet = Code_Snippet.query.get(snip_id)
         if snippet:
             snip_name = snippet.snip_name
+            has_prep_snippets = Prepared_Snippet.query.filter_by(snip_id=snip_id).first()
+            if has_prep_snippets:
+                flash("Ce snippet est utilisé (Snippets Préparés). Il ne peut pas être supprimé.")
+                return redirect(url_for('list_snippets_short'))
             return render_template('del_snippet.html', form=form, name=snip_name)
         else:
             flash("L'information n'a pas pu être retrouvée.")
@@ -1901,10 +1913,15 @@ def db_del_prep_cl(prep_cl_id):
     try:
         p_cl = Prepared_Checklist.query.get(prep_cl_id)
         p_cl_vars = Prepared_Checklist_Var.query.filter_by(prep_cl_id=prep_cl_id).all()
-        # TODO Autres deletes pour les sections et les steps
         for p_cl_v in p_cl_vars:
             db.session.delete(p_cl_v)
         db.session.delete(p_cl)
+        p_cl_sections = Prepared_CL_Section.query.filter_by(prep_cl_id=p_cl.prep_cl_id).all()
+        for p_cl_sect in p_cl_sections:
+            p_cl_steps = Prepared_CL_Step.query.filter_by(prep_cl_sect_id=p_cl_sect.prep_cl_sect_id).all()
+            for p_cl_step in p_cl_steps:
+                db.session.delete(p_cl_step)
+            db.session.delete(p_cl_sect)
         db.session.commit()
     except Exception as e:
         app.logger.error('DB Error' + str(e))
