@@ -2,7 +2,7 @@
 {% import "bootstrap/wtf.html" as wtf %}
 
 {% macro render_field(field) %}
-    <div class="form-group">
+<div class="form-group" xmlns="http://www.w3.org/1999/html">
         {{ field.label(class="control-label") }}
         {{ field(**kwargs)|safe }}
         {% if field.errors %}
@@ -83,10 +83,24 @@
             <p>
                 <em>Description:</em>&nbsp;{{ step['detail'] }}<br>
                 <em>Usager:</em>&nbsp;{{ step['user'] }}<br>
+                <em>Status:</em>
+                {% if step['status'] == "D" %}  <span style="background-color: lime">Fait   </span>
+                {% elif step['status'] == 'N' %}<span style="background-color: cyan">À faire</span>
+                {% elif step['status'] == 'E' %}<span style="background-color: red">Erreur </span>
+                {% elif step['status'] == 'R' %}<span style="background-color: yellow">À revoir</span>
+                {% else %}Inconnu
+                {% endif %}
+                <br>
                 {% if step['code'] %}
                     <em>Code:</em><br>
 <pre>
 <code>{{ step['code'] }}</code>
+</pre>
+                {% endif %}
+                {% if step['rslt'] %}
+                    <em>Résultat:</em><br>
+<pre>
+<code>{{ step['rslt'] }}</code>
 </pre>
                 {% endif %}
                 <a href="{{ url_for('upd_prep_cl_step', prep_cl_step_id=step['prep_cl_step_id']) }}"

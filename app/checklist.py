@@ -2,7 +2,7 @@ from flask import Flask, session, redirect, url_for, request, render_template, f
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_bootstrap import Bootstrap
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, TextAreaField, BooleanField, SubmitField, IntegerField
+from wtforms import StringField, PasswordField, TextAreaField, BooleanField, SubmitField, IntegerField, SelectField
 from wtforms.validators import DataRequired, Email, EqualTo, NumberRange  # Length, NumberRange
 from flask_script import Manager
 from flask_sqlalchemy import SQLAlchemy
@@ -390,6 +390,8 @@ class UpdPrepChecklistStepForm(FlaskForm):
     step_detail = TextAreaField('Description')
     step_user = StringField('Usager à utiliser pour ce step')
     step_code = TextAreaField('Code')
+    step_rslt = TextAreaField('Résultat')
+    status_ind = SelectField('Status', choices=[('N', 'À faire'), ('D', 'Fait'), ('E', 'Erreur'), ('R', 'À revoir')])
     submit = SubmitField('Modifier')
 
 
@@ -1034,6 +1036,8 @@ def upd_prep_cl(prep_cl_id):
                     step['detail'] = q_step.step_detail
                     step['user'] = q_step.step_user
                     step['code'] = q_step.step_code
+                    step['rslt'] = q_step.step_rslt
+                    step['status'] = q_step.status_ind
                     steps.append(step)
                 section['steps'] = steps
                 sections.append(section)
@@ -1079,7 +1083,9 @@ def upd_prep_cl_step(prep_cl_step_id):
         step_detail = form.step_detail.data
         step_user = form.step_user.data
         step_code = form.step_code.data
-        if db_upd_prep_cl_step(prep_cl_step_id, step_detail, step_user, step_code):
+        step_rslt = form.step_rslt.data
+        status_ind = form.status_ind.data
+        if db_upd_prep_cl_step(prep_cl_step_id, step_detail, step_user, step_code, step_rslt, status_ind):
             flash("L'étape a été mise à jour.")
         else:
             flash("Quelque chose n'a pas fonctionné.")
@@ -1090,6 +1096,8 @@ def upd_prep_cl_step(prep_cl_step_id):
             form.step_detail.data = cl_step.step_detail
             form.step_user.data = cl_step.step_user
             form.step_code.data = cl_step.step_code
+            form.step_rslt.data = cl_step.step_rslt
+            form.status_ind.data = cl_step.status_ind
             return render_template("upd_prep_cl_step.html", form=form, cl_step=cl_step,
                                    prep_cl_id=prep_cl_id)
         else:
@@ -1898,11 +1906,13 @@ def db_upd_prep_cl_sect(prep_cl_sect_id, section_detail):
     return True
 
 
-def db_upd_prep_cl_step(prep_cl_step_id, step_detail, step_user, step_code):
+def db_upd_prep_cl_step(prep_cl_step_id, step_detail, step_user, step_code, step_rslt, status_ind):
     try:
         cl_step = Prepared_CL_Step.query.get(prep_cl_step_id)
         cl_step.step_detail = step_detail
         cl_step.step_code = step_code
+        cl_step.step_rslt = step_rslt
+        cl_step.status_ind = status_ind
         db.session.commit()
     except Exception as e:
         app.logger.error('DB Error' + str(e))
