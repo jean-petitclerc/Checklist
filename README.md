@@ -45,3 +45,25 @@ db.create_all()
 python checklist.py runserver
 
 Ouvrir 127.0.0.1:5000 dans un browser
+
+## Utilisation
+
+Commencer par s'inscrire (Ignorer le message concernant l'activation.)
+Définir des Variables Prédéfinies (qui seront utiliser dans les checklists et snippets). Exemple:
+<DB> - Nom de la base de données
+<SCHEMA> - Nom du schéma
+...
+
+Définir une checklist avec sections et étapes. Les étapes peuvent contenir du code. Exemple
+db2 connect to <DB>
+
+Sélectionner les Variables Prédéfinies pour la checklist
+
+Préparer une checklist
+
+Assigner les valeurs aux variables
+
+Appliquer les valeurs au code
+
+Pour utiliser une checklist préparée, utiliser la fonction "Modifier".  
+Le long de l'exécution de votre checklist, vous pouvez sauver des résultats et mettre à jour le status de chaque étape.
