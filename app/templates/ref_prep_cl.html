@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% import "bootstrap/wtf.html" as wtf %}
+
+{% block page_content %}
+<div class="container">
+    <div class="page-header">
+        <h1>Rafraîchir une Checklist Préparée</h1>
+    </div>
+
+    <form class="form" method="post" role="form">
+        {{ form.hidden_tag() }}
+        {{ wtf.form_errors(form, hiddens="only") }}
+        <h4>
+            <em>Voulez-vous vraiment rafraîchir cette checklist?</em>
+            <br>
+            Checklist: {{ name }}
+            <ul>
+                <li>Toutes les sections et toutes les étapes seront remplacées.</li>
+                <li>La valeur des variables seront réappliquées.</li>
+                <li>Les status seront remis au défaut.</li>
+                <li>Les résultats sauvés seront perdus</li>
+            </ul>
+        </h4>
+        <input class="btn btn-default" id="submit" name="submit" type="submit" value="Rafraîchir">
+        <a href="{{ url_for('list_prep_checklists') }}" class="btn btn-default">Annuler</a>
+    </form>
+</div>
+{% endblock %}

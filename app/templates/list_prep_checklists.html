@@ -2,7 +2,7 @@
 {% block page_content %}
 <div class="container">
     <div class="page-header">
-        <h1>Liste des checklists Préparées</h1>
+        <h1>Liste des Checklists Préparées</h1>
     </div>
     <p>
         {% if checklists %}
@@ -14,6 +14,7 @@
                     <th>Créé le</th>
                     <th class="text-center">Modifier</th>
                     <th class="text-center">Supprimer</th>
+                    <th class="text-center">Rafraîchir</th>
                 </tr>
             </thead>
             <tbody>
@@ -26,6 +27,8 @@
                             class="btn btn-primary btn-xs" data-title="Modifier"><span class="glyphicon glyphicon-pencil"></span></a></td>
                         <td class="text-center"><a href="{{ url_for('del_prep_cl', prep_cl_id=p_cl['prep_cl_id']) }}"
                             class="btn btn-danger btn-xs" data-title="Supprimer"><span class="glyphicon glyphicon-trash"></span></a></td>
+                        <td class="text-center"><a href="{{ url_for('ref_prep_cl', prep_cl_id=p_cl['prep_cl_id']) }}"
+                            class="btn btn-success btn-xs" data-title="Rafraîchir"><span class="glyphicon glyphicon-refresh"></span></a></td>
                     </tr>
                 {% endfor %}
             </tbody>

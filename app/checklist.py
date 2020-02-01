@@ -368,6 +368,11 @@ class DelPrepChecklistForm(FlaskForm):
     submit = SubmitField('Supprimer')
 
 
+# Formulaire pour confirmer le rafraîchissement d'une checklist préparée
+class RefPrepChecklistForm(FlaskForm):
+    submit = SubmitField('Rafraîchir')
+
+
 # Formulaire pour confirmer la suppression d'un snippet préparé
 class DelPrepSnippetForm(FlaskForm):
     submit = SubmitField('Supprimer')
@@ -705,7 +710,6 @@ def show_checklist(checklist_id):
         for q_cl_v in q_cl_vars:
             cl_var = dict()
             q_p_var = Predef_Var.query.get(q_cl_v.var_id)
-            app.logger.debug('var name: ' + q_p_var.var_name)
             cl_var['name'] = q_p_var.var_name
             cl_var['desc'] = q_p_var.var_desc
             cl_vars.append(cl_var)
@@ -943,7 +947,6 @@ def show_prep_snippet(prep_snip_id):
         return redirect(url_for('list_prep_checklists'))
 
 
-
 @app.route('/del_prep_cl/<int:prep_cl_id>', methods=['GET', 'POST'])
 def del_prep_cl(prep_cl_id):
     if not logged_in():
@@ -965,6 +968,27 @@ def del_prep_cl(prep_cl_id):
             return redirect(url_for('list_prep_checklists'))
 
 
+@app.route('/ref_prep_cl/<int:prep_cl_id>', methods=['GET', 'POST'])
+def ref_prep_cl(prep_cl_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+    form = RefPrepChecklistForm()
+    if form.validate_on_submit():
+        app.logger.debug('Refreshing a prepared checklist')
+        if db_ref_prep_cl(prep_cl_id):
+            flash("La checklist a été rafraîchie.")
+        else:
+            flash("Quelque chose n'a pas fonctionné.")
+        return redirect(url_for('list_prep_checklists'))
+    else:
+        cl = Prepared_Checklist.query.get(prep_cl_id)
+        if cl:
+            return render_template('ref_prep_cl.html', form=form, name=cl.prep_cl_name)
+        else:
+            flash("L'information n'a pas pu être retrouvée.")
+            return redirect(url_for('list_prep_checklists'))
+
+
 @app.route('/show_prep_checklist/<int:prep_cl_id>')
 def show_prep_checklist(prep_cl_id):
     if not logged_in():
@@ -978,12 +1002,10 @@ def show_prep_checklist(prep_cl_id):
         for q_cl_v in q_cl_vars:
             cl_var = dict()
             q_p_var = Predef_Var.query.get(q_cl_v.var_id)
-            app.logger.debug('var name: ' + q_p_var.var_name)
             cl_var['name'] = q_cl_v.var_name
             cl_var['value'] = q_cl_v.var_value
             cl_vars.append(cl_var)
 
-        # l_sections = [ [section_name, [step 1, step 2,...]], [section_name, [step 1, step 2, step 3,...]],...]
         sections = []
         for q_section in q_sections:
             section = dict()
@@ -991,7 +1013,7 @@ def show_prep_checklist(prep_cl_id):
             section['seq'] = q_section.section_seq
             section['name'] = q_section.section_name
             section['detail'] = q_section.section_detail
-            q_steps = Prepared_CL_Step.query.filter_by(prep_cl_sect_id=q_section.section_id) \
+            q_steps = Prepared_CL_Step.query.filter_by(prep_cl_sect_id=q_section.prep_cl_sect_id) \
                 .order_by(Prepared_CL_Step.step_seq).all()
             steps = []
             for q_step in q_steps:
@@ -1024,11 +1046,10 @@ def replace_vars_in_code(code, vars):
 def upd_prep_cl(prep_cl_id):
     if not logged_in():
         return redirect(url_for('login'))
-    app.logger.debug('Entering upd_prep_cl')
+    app.logger.debug('Entering upd_prep_cl:' + str(prep_cl_id))
     session['prep_cl_id'] = prep_cl_id
     form = UpdPrepChecklistForm()
     if form.validate_on_submit():
-        app.logger.debug('Updating a prepared checklist')
         prep_cl_name = form.prep_cl_name.data
         prep_cl_desc = form.prep_cl_desc.data
         if db_upd_prep_cl(prep_cl_id, prep_cl_name, prep_cl_desc):
@@ -1047,6 +1068,7 @@ def upd_prep_cl(prep_cl_id):
                 .order_by(Prepared_CL_Section.section_seq).all()
             sections = []
             for q_section in q_sections:
+                #app.logger.debug('Section:' + str(q_section.prep_cl_sect_id) + ' ' + q_section.section_name)
                 section = dict()
                 section['prep_cl_sect_id'] = q_section.prep_cl_sect_id
                 section['seq'] = q_section.section_seq
@@ -1056,6 +1078,7 @@ def upd_prep_cl(prep_cl_id):
                     .order_by(Prepared_CL_Step.step_seq).all()
                 steps = []
                 for q_step in q_steps:
+                    #app.logger.debug('Step:' + str(q_step.prep_cl_step_id) + ' ' + q_step.step_short)
                     step = dict()
                     step['prep_cl_step_id'] = q_step.prep_cl_step_id
                     step['seq'] = q_step.step_seq
@@ -1857,7 +1880,6 @@ def db_add_prep_cl(prep_cl_name, prep_cl_desc, checklist_id):
         for cl_v in cl_vars:
             pred_var = Predef_Var.query.filter_by(var_id=cl_v.var_id).first()
             var_name = pred_var.var_name
-            app.logger.debug(var_name)
             p_cl_var = Prepared_Checklist_Var(p_cl.prep_cl_id, cl_v.var_id, var_name, None)
             db.session.add(p_cl_var)
         cl_sections = Section.query.filter_by(checklist_id=checklist_id, deleted_ind='N').all()
@@ -1867,7 +1889,8 @@ def db_add_prep_cl(prep_cl_name, prep_cl_desc, checklist_id):
             db.session.add(p_cl_sect)
             cl_steps = Step.query.filter_by(checklist_id=checklist_id, section_id=cl_sect.section_id, deleted_ind='N').all()
             for cl_step in cl_steps:
-                p_cl_step = Prepared_CL_Step(p_cl_sect.section_id, cl_step.step_id, cl_step.step_seq,
+                #     def __init__(self, prep_cl_sect_id, step_id, step_seq, step_short, step_detail, step_user, step_code):
+                p_cl_step = Prepared_CL_Step(p_cl_sect.prep_cl_sect_id, cl_step.step_id, cl_step.step_seq,
                                              cl_step.step_short, cl_step.step_detail, cl_step.step_user,
                                              cl_step.step_code)
                 db.session.add(p_cl_step)
@@ -1876,6 +1899,64 @@ def db_add_prep_cl(prep_cl_name, prep_cl_desc, checklist_id):
         app.logger.error('DB Error' + str(e))
         return None
     return p_cl.prep_cl_id
+
+
+def db_ref_prep_cl(prep_cl_id):
+    audit_crt_user = session.get('user_email', None)
+    audit_crt_ts = datetime.now()
+    try:
+        p_cl = Prepared_Checklist.query.get(prep_cl_id)
+        p_cl.audit_crt_user = audit_crt_user
+        p_cl.audit_crt_ts = audit_crt_ts
+        p_cl_vars = Prepared_Checklist_Var.query.filter_by(prep_cl_id=prep_cl_id).all()
+        s_cl_vars = dict()
+        for p_cl_var in p_cl_vars:
+            s_cl_vars[p_cl_var.var_name] = p_cl_var.var_value
+            db.session.delete(p_cl_var)
+        cl_vars = Checklist_Var.query.filter_by(checklist_id=p_cl.checklist_id).all()
+        for cl_var in cl_vars:
+            pred_var = Predef_Var.query.get(cl_var.var_id)
+            var_name = pred_var.var_name
+            if var_name in s_cl_vars:
+                var_value = s_cl_vars[var_name]
+            else:
+                var_value = ''
+            p_cl_var = Prepared_Checklist_Var(p_cl.prep_cl_id, cl_var.var_id, var_name, var_value)
+            db.session.add(p_cl_var)
+        p_cl_sections = Prepared_CL_Section.query.filter_by(prep_cl_id=prep_cl_id).all()
+        #app.logger.debug('Deleting sections')
+        for p_cl_sect in p_cl_sections:
+            p_cl_steps = Prepared_CL_Step.query.filter_by(prep_cl_sect_id=p_cl_sect.prep_cl_sect_id).all()
+            #app.logger.debug('Deleting steps')
+            for p_cl_step in p_cl_steps:
+                #app.logger.debug('Deleting step: ' + p_cl_step.step_short)
+                db.session.delete(p_cl_step)
+            #app.logger.debug('Deleting section: ' + p_cl_sect.section_name)
+            db.session.delete(p_cl_sect)
+        #app.logger.debug('Delete of sections and steps done')
+        cl_sections = Section.query.filter_by(checklist_id=p_cl.checklist_id, deleted_ind='N').all()
+        for cl_sect in cl_sections:
+            app.logger.debug('Adding section: ' + cl_sect.section_name)
+            p_cl_sect = Prepared_CL_Section(p_cl.prep_cl_id, cl_sect.section_id, cl_sect.section_seq,
+                                            cl_sect.section_name, cl_sect.section_detail)
+            db.session.add(p_cl_sect)
+            cl_steps = Step.query.filter_by(checklist_id=p_cl.checklist_id, section_id=cl_sect.section_id, deleted_ind='N').all()
+            for cl_step in cl_steps:
+                app.logger.debug('Adding step: ' + cl_step.step_short)
+                step_code = cl_step.step_code
+                app.logger.debug(step_code)
+                for var_name in s_cl_vars.keys():
+                    step_code = step_code.replace(var_name, s_cl_vars[var_name])
+                app.logger.debug(step_code)
+                p_cl_step = Prepared_CL_Step(p_cl_sect.prep_cl_sect_id, cl_step.step_id, cl_step.step_seq,
+                                             cl_step.step_short, cl_step.step_detail, cl_step.step_user,
+                                             step_code)
+                db.session.add(p_cl_step)
+        db.session.commit()
+    except Exception as e:
+        app.logger.error('DB Error: ' + str(e))
+        return False
+    return True
 
 
 def db_upd_prep_cl(prep_cl_id, prep_cl_name, prep_cl_desc):
@@ -2123,7 +2204,7 @@ def db_ref_prep_snip(prep_snip_id):
         db.session.commit()
     except Exception as e:
         app.logger.error('DB Error' + str(e))
-        return None
+        return False
     return True
 
 
