@@ -28,9 +28,13 @@ DEBUG=True
 ## Installation
 
 Avec Python 3, créer un environnement virtuel
-Ajouter les packages listés dans requirements.txt
-Créer la database
+
+Activer l'env. virt.
 . <venv>/bin/activate
+
+Ajouter les packages listés dans requirements.txt
+
+Créer la database
 cd app
 python
 from checklist import db
@@ -39,3 +43,5 @@ db.create_all()
 ## Exécution dans l'environnement de développement
 . <venv>/bin/activate
 python checklist.py runserver
+
+Ouvrir 127.0.0.1:5000 dans un browser
