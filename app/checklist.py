@@ -452,9 +452,9 @@ class DelSectionForm(FlaskForm):
 # Formulaire pour ajouter une section à une checklist
 class AddStepForm(FlaskForm):
     step_seq = IntegerField('Séquence', validators=[NumberRange(min=0, message="Doit être un entier positif.")])
-    step_short = StringField('Nom du step')
+    step_short = StringField("Nom de l'étape")
     step_detail = TextAreaField('Explication')
-    step_user = StringField('Usager à utiliser pour ce step')
+    step_user = StringField('Usager à utiliser pour cette étape')
     step_code = TextAreaField('Code')
     submit = SubmitField('Ajouter')
 
@@ -462,9 +462,9 @@ class AddStepForm(FlaskForm):
 # Formulaire pour la mise à jour d'une section
 class UpdStepForm(FlaskForm):
     step_seq = IntegerField('Séquence', validators=[NumberRange(min=0, message="Doit être un entier positif.")])
-    step_short = StringField('Nom du step')
+    step_short = StringField("Nom de l'étape")
     step_detail = TextAreaField('Explication')
-    step_user = StringField('Usager à utiliser pour ce step')
+    step_user = StringField('Usager à utiliser pour cette étape')
     step_code = TextAreaField('Code')
     submit = SubmitField('Modifier')
 
@@ -476,14 +476,14 @@ class DelStepForm(FlaskForm):
 
 # Formulaire pour ajouter une variable
 class AddVarForm(FlaskForm):
-    var_name = StringField('Nom de la variable')
+    var_name = StringField('Nom de la variable. Doit être entouré de chevrons, exemple &lt;nom&gt;.')
     var_desc = StringField('Description')
     submit = SubmitField('Ajouter')
 
 
 # Formulaire pour ajouter une variable
 class UpdVarForm(FlaskForm):
-    var_name = StringField('Nom de la variable')
+    var_name = StringField('Nom de la variable. Doit être entouré de chevrons, exemple &lt;nom&gt;.')
     var_desc = StringField('Description')
     submit = SubmitField('Modifier')
 
@@ -1337,7 +1337,7 @@ def upd_step(step_id):
         step_detail = form.step_detail.data
         step_user = form.step_user.data
         step_code = form.step_code.data
-        if db_upd_step(step_id, step_seq, step_short, step_detail, step_user, step_code, section_id):
+        if db_upd_step(step_id, step_seq, step_short, step_detail, step_user, step_code, section_id, checklist_id):
             flash("Le step a été modifiée.")
         else:
             flash("Quelque chose n'a pas fonctionné.")
@@ -1375,9 +1375,13 @@ def add_var():
     app.logger.debug('Entering add_var')
     form = AddVarForm()
     if form.validate_on_submit():
+        p = re.compile('^<\S*>$')
         app.logger.debug('Inserting a new var')
         var_name = request.form['var_name']
         var_desc = request.form['var_desc']
+        if p.match(var_name) is None:
+            flash('Le nom de variable est invalide.')
+            return render_template('add_var.html', form=form)
         if db_add_var(var_name, var_desc):
             flash('La nouvelle variable est ajoutée.')
             return redirect(url_for('list_vars'))
@@ -1424,8 +1428,12 @@ def upd_var(var_id):
     form = UpdVarForm()
     if form.validate_on_submit():
         app.logger.debug('Updating a step')
+        p = re.compile('^<\S*>$')
         var_name = form.var_name.data
         var_desc = form.var_desc.data
+        if p.match(var_name) is None:
+            flash('Le nom de variable est invalide.')
+            return render_template('upd_var.html', form=form)
         if db_upd_var(var_id, var_name, var_desc):
             flash("La variable a été modifiée.")
         else:
@@ -1664,7 +1672,7 @@ def user_exists(user_email):
         app.logger.debug('user_exists returns False')
         return False
     else:
-        app.logger.debug('user_exists returns True' + user[0])
+        app.logger.debug('user_exists returns True' + user_email)
         return True
 
 
@@ -1812,8 +1820,21 @@ def db_renum_section(checklist_id):
 
 def db_add_step(checklist_id, section_id, step_seq, step_short, step_detail, step_user, step_code):
     step = Step(checklist_id, section_id, step_seq, step_short, step_detail, step_user, step_code)
+    p = re.compile('<\S*>')
     try:
         db.session.add(step)
+        list_vars = p.findall(step_code)
+        for var_name in list_vars:
+            var_id = db_exists_pred_var(var_name)
+            if var_id is None:
+                flash("Cette variable n'est pas prédéfinie. N'oubliez pas de la définir. " + var_name)
+            else:
+                app.logger.debug("Variable prédéfinie trouvée. Il faut ajouter (checklist_id:var_id)" + str(checklist_id) + ":" + str(var_id))
+                cl_var = Checklist_Var.query.filter_by(checklist_id=checklist_id, var_id=var_id).first()
+                if not cl_var:
+                    app.logger.debug("On essaie de l'ajouter...")
+                    cl_var = Checklist_Var(checklist_id, var_id)
+                    db.session.add(cl_var)
         if db_renum_step(section_id):
             db.session.commit()
         else:
@@ -1839,7 +1860,8 @@ def db_del_step(step_id, section_id):
     return True
 
 
-def db_upd_step(step_id, step_seq, step_short, step_detail, step_user, step_code, section_id):
+def db_upd_step(step_id, step_seq, step_short, step_detail, step_user, step_code, section_id, checklist_id):
+    p = re.compile('<\S*>')
     step = Step.query.get(step_id)
     step.step_seq = step_seq
     step.step_short = step_short
@@ -1847,6 +1869,18 @@ def db_upd_step(step_id, step_seq, step_short, step_detail, step_user, step_code
     step.step_user = step_user
     step.step_code = step_code
     try:
+        list_vars = p.findall(step_code)
+        for var_name in list_vars:
+            var_id = db_exists_pred_var(var_name)
+            if var_id is None:
+                flash("Cette variable n'est pas prédéfinie. N'oubliez pas de la définir. " + var_name)
+            else:
+                app.logger.debug("Variable prédéfinie trouvée. Il faut ajouter (checklist_id:var_id)" + str(checklist_id) + ":" + str(var_id))
+                cl_var = Checklist_Var.query.filter_by(checklist_id=checklist_id, var_id=var_id).first()
+                if not cl_var:
+                    app.logger.debug("On essaie de l'ajouter...")
+                    cl_var = Checklist_Var(checklist_id, var_id)
+                    db.session.add(cl_var)
         if db_renum_step(section_id):
             db.session.commit()
         else:

@@ -6,9 +6,9 @@
             <h1>Allo {{ user }}!</h1>
         </div>
         <ul>
+           <li><a href="{{ url_for('list_vars') }}">Liste des Variables Prédéfinies</a></li>
            <li><a href="{{ url_for('list_checklists') }}">Liste des Checklists</a></li>
            <li><a href="{{ url_for('list_prep_checklists') }}">Liste des Checklists Préparées</a></li>
-           <li><a href="{{ url_for('list_vars') }}">Liste des Variables Prédéfinies</a></li>
            <li><a href="{{ url_for('list_snippets_short') }}">Liste sommaire des Snippets</a></li>
            <li><a href="{{ url_for('list_snippets') }}">Liste détaillée des Snippets</a></li>
            <li><a href="{{ url_for('list_prep_snippets') }}">Liste des Snippets Préparés</a></li>
