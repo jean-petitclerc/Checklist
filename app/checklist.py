@@ -8,6 +8,7 @@ from flask_script import Manager
 from flask_sqlalchemy import SQLAlchemy
 from contextlib import closing
 from datetime import datetime
+import re
 
 # TODO Categorie et sous-categorie ou des tags
 # TODO Reviser les validators dans les formulaires
@@ -1567,7 +1568,7 @@ def add_snippet():
         snip_code = request.form['snip_code']
         if db_add_snippet(snip_name, snip_desc, snip_code):
             flash('Le nouveau bout de code est ajouté.')
-            return redirect(url_for('list_snippets'))
+            return redirect(url_for('list_snippets_short'))
         else:
             flash('Une erreur de base de données est survenue.')
             abort(500)
@@ -1617,7 +1618,7 @@ def del_snippet(snip_id):
             flash("Le bout de code a été effacé.")
         else:
             flash("Quelque chose n'a pas fonctionné.")
-        return redirect(url_for('list_snippets'))
+        return redirect(url_for('list_snippets_short'))
     else:
         snippet = Code_Snippet.query.get(snip_id)
         if snippet:
@@ -1629,7 +1630,7 @@ def del_snippet(snip_id):
             return render_template('del_snippet.html', form=form, name=snip_name)
         else:
             flash("L'information n'a pas pu être retrouvée.")
-            return redirect(url_for('list_snippets'))
+            return redirect(url_for('list_snippets_short'))
 
 
 # Database functions
@@ -2082,6 +2083,15 @@ def db_upd_var(var_id, var_name, var_desc):
     return True
 
 
+def db_exists_pred_var(var_name):
+    try:
+        pred_var = Predef_Var.query.filter_by(var_name=var_name).one()
+        return pred_var.var_id
+    except Exception as e:
+        app.logger.error('DB Error' + str(e))
+        return None
+
+
 def db_add_cl_var(checklist_id, var_id):
     cl_v = Checklist_Var(checklist_id, var_id)
     try:
@@ -2118,9 +2128,18 @@ def db_del_cl_var(checklist_id, var_id):
 def db_add_snippet(snip_name, snip_desc, snip_code):
     audit_crt_user = session.get('user_email', None)
     audit_crt_ts = datetime.now()
+    p = re.compile('<\S*>')
     snippet = Code_Snippet(snip_name, snip_desc, snip_code, audit_crt_user, audit_crt_ts)
     try:
         db.session.add(snippet)
+        list_vars = p.findall(snip_code)
+        for var_name in list_vars:
+            var_id = db_exists_pred_var(var_name)
+            if var_id is None:
+                flash("Cette variable n'est pas prédéfinie. N'oubliez pas de la définir. " + var_name)
+            else:
+                snip_var = Code_Snippet_Var(snippet.snip_id, var_id)
+                db.session.add(snip_var)
         db.session.commit()
     except Exception as e:
         app.logger.error('DB Error' + str(e))
@@ -2144,13 +2163,29 @@ def db_del_snippet(snip_id):
 
 def db_upd_snippet(snip_id, snip_name, snip_desc, snip_code):
     audit_user = session.get('user_email', None)
-    snippet = Code_Snippet.query.get(snip_id)
-    snippet.snip_name = snip_name
-    snippet.snip_desc = snip_desc
-    snippet.snip_code = snip_code
-    snippet.audit_upd_user = audit_user
-    snippet.audit_upd_ts = datetime.now()
+    p = re.compile('<\S*>')
     try:
+        snippet = Code_Snippet.query.get(snip_id)
+        snippet.snip_name = snip_name
+        snippet.snip_desc = snip_desc
+        snippet.snip_code = snip_code
+        snippet.audit_upd_user = audit_user
+        snippet.audit_upd_ts = datetime.now()
+        list_vars = p.findall(snip_code)
+        for var_name in list_vars:
+            app.logger.debug("Variable trouvée: " + var_name)
+            var_id = db_exists_pred_var(var_name)
+            if var_id is None:
+                app.logger.debug("Variable prédéfine non trouvée: ")
+                flash("Cette variable n'est pas prédéfinie. N'oubliez pas de la définir. " + var_name)
+            else:
+                app.logger.debug("Variable prédéfinie trouvée. Il faut ajouter (snip_id, var_id)" + str(snip_id) + ":" + str(var_id))
+                snip_var = Code_Snippet_Var.query.filter_by(snip_id=snip_id, var_id=var_id).first()
+                #snip_var = snip_vars[0]
+                if not snip_var:
+                    app.logger.debug("On essaie de l'ajouter...")
+                    snip_var = Code_Snippet_Var(snip_id, var_id)
+                    db.session.add(snip_var)
         db.session.commit()
     except Exception as e:
         app.logger.error('DB Error' + str(e))
