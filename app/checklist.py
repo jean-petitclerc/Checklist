@@ -1827,7 +1827,7 @@ def db_add_step(checklist_id, section_id, step_seq, step_short, step_detail, ste
         for var_name in list_vars:
             var_id = db_exists_pred_var(var_name)
             if var_id is None:
-                flash("Cette variable n'est pas prédéfinie. N'oubliez pas de la définir. " + var_name)
+                flash("Cette variable n'est pas prédéfinie: " + var_name + ". N'oubliez pas de la définir et de l'ajouter à la checklist.")
             else:
                 app.logger.debug("Variable prédéfinie trouvée. Il faut ajouter (checklist_id:var_id)" + str(checklist_id) + ":" + str(var_id))
                 cl_var = Checklist_Var.query.filter_by(checklist_id=checklist_id, var_id=var_id).first()
@@ -1873,7 +1873,7 @@ def db_upd_step(step_id, step_seq, step_short, step_detail, step_user, step_code
         for var_name in list_vars:
             var_id = db_exists_pred_var(var_name)
             if var_id is None:
-                flash("Cette variable n'est pas prédéfinie. N'oubliez pas de la définir. " + var_name)
+                flash("Cette variable n'est pas prédéfinie: " + var_name + ". N'oubliez pas de la définir et de l'ajouter à la checklist.")
             else:
                 app.logger.debug("Variable prédéfinie trouvée. Il faut ajouter (checklist_id:var_id)" + str(checklist_id) + ":" + str(var_id))
                 cl_var = Checklist_Var.query.filter_by(checklist_id=checklist_id, var_id=var_id).first()
@@ -2170,7 +2170,7 @@ def db_add_snippet(snip_name, snip_desc, snip_code):
         for var_name in list_vars:
             var_id = db_exists_pred_var(var_name)
             if var_id is None:
-                flash("Cette variable n'est pas prédéfinie. N'oubliez pas de la définir. " + var_name)
+                flash("Cette variable n'est pas prédéfinie: " + var_name + ". N'oubliez pas de la définir et de l'ajouter au snippet.")
             else:
                 snip_var = Code_Snippet_Var(snippet.snip_id, var_id)
                 db.session.add(snip_var)
@@ -2211,7 +2211,7 @@ def db_upd_snippet(snip_id, snip_name, snip_desc, snip_code):
             var_id = db_exists_pred_var(var_name)
             if var_id is None:
                 app.logger.debug("Variable prédéfine non trouvée: ")
-                flash("Cette variable n'est pas prédéfinie. N'oubliez pas de la définir. " + var_name)
+                flash("Cette variable n'est pas prédéfinie: " + var_name + ". N'oubliez pas de la définir et de l'ajouter au snippet.")
             else:
                 app.logger.debug("Variable prédéfinie trouvée. Il faut ajouter (snip_id, var_id)" + str(snip_id) + ":" + str(var_id))
                 snip_var = Code_Snippet_Var.query.filter_by(snip_id=snip_id, var_id=var_id).first()
