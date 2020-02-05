@@ -4,20 +4,21 @@
 {% block page_content %}
 <div class="container">
     <div class="page-header">
-        <h1>Supprimer un Bout de Code</h1>
+        <h1>Supprimer un Extrait de Code</h1>
     </div>
 
     <form class="form" method="post" role="form">
         {{ form.hidden_tag() }}
         {{ wtf.form_errors(form, hiddens="only") }}
         <h4>
-            <em>Voulez-vous vraiment supprimer ce bout de code?</em>
+            <em>Voulez-vous vraiment supprimer cet Extrait de Code?</em>
             <br>
-                Bout de Code: {{ name }}
+                Extrait de Code: {{ name }}
             </br>
         </h4>
         <input class="btn btn-default" id="submit" name="submit" type="submit" value="Supprimer">
         <a href="{{ url_for('list_snippets_short') }}" class="btn btn-default">Annuler</a>
     </form>
+    <p>&nbsp;</p>
 </div>
 {% endblock %}

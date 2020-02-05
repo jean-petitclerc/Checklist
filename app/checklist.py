@@ -12,12 +12,8 @@ import re
 
 # TODO Categorie et sous-categorie ou des tags
 # TODO Reviser les validators dans les formulaires
-# TODO Génération de checklists remplies
 # TODO Private variables
-# TODO Rafraichir une checklist préparée
 # TODO Etapes optionelles
-# TODO Sélectionner bout de code quand on ajoute une étape
-# TODO Modifier le code dans une checklist préparée
 # TODO print pdf
 
 app = Flask(__name__)
@@ -493,7 +489,7 @@ class DelVarForm(FlaskForm):
     submit = SubmitField('Supprimer')
 
 
-# Formulaire pour ajouter un bout de code
+# Formulaire pour ajouter un extrait de code
 class AddSnippetForm(FlaskForm):
     snip_name = StringField('Nom')
     snip_desc = TextAreaField('Courte description')
@@ -501,7 +497,7 @@ class AddSnippetForm(FlaskForm):
     submit = SubmitField('Ajouter')
 
 
-# Formulaire pour ajouter un bout de code
+# Formulaire pour ajouter un extrait de code
 class UpdSnippetForm(FlaskForm):
     snip_name = StringField('Nom')
     snip_desc = TextAreaField('Courte description')
@@ -509,7 +505,7 @@ class UpdSnippetForm(FlaskForm):
     submit = SubmitField('Modifier')
 
 
-# Formulaire pour confirmer la suppression d'un bout de code
+# Formulaire pour confirmer la suppression d'un extrait de code
 class DelSnippetForm(FlaskForm):
     submit = SubmitField('Supprimer')
 
@@ -798,7 +794,7 @@ def add_prep_snippet(snip_id):
             prep_snip_code = " "
         prep_snip_id = db_add_prep_snip(prep_snip_name, prep_snip_desc, prep_snip_code, snip_id)
         if prep_snip_id is not None:
-            flash('Le nouveau snippet est ajouté.')
+            flash('Le nouvel Extrait de Code est ajouté.')
             return redirect(url_for('upd_prep_snippet', prep_snip_id=prep_snip_id))
         else:
             flash('Une erreur de base de données est survenue.')
@@ -824,7 +820,7 @@ def upd_prep_snippet(prep_snip_id):
         prep_snip_code = form.prep_snip_code.data
         prep_snip_rslt = form.prep_snip_rslt.data
         if db_upd_prep_snip(prep_snip_id, prep_snip_name, prep_snip_desc, prep_snip_code, prep_snip_rslt):
-            flash("Le snippet a été modifié.")
+            flash("L'Extrait de Code a été modifié.")
         else:
             flash("Quelque chose n'a pas fonctionné.")
         return redirect(url_for('upd_prep_snippet', prep_snip_id=prep_snip_id))
@@ -891,7 +887,7 @@ def del_prep_snippet(prep_snip_id):
     if form.validate_on_submit():
         app.logger.debug('Deleting a prepared snippet')
         if db_del_prep_snip(prep_snip_id):
-            flash("Le snippet a été effacé.")
+            flash("L'Extrait de Code a été effacé.")
         else:
             flash("Quelque chose n'a pas fonctionné.")
         return redirect(url_for('list_prep_snippets'))
@@ -912,7 +908,7 @@ def ref_prep_snippet(prep_snip_id):
     if form.validate_on_submit():
         app.logger.debug('Refreshing a prepared snippet')
         if db_ref_prep_snip(prep_snip_id):
-            flash("Le snippet a été rafraîchi.")
+            flash("L'Extrait de Code a été rafraîchi.")
         else:
             flash("Quelque chose n'a pas fonctionné.")
         return redirect(url_for('list_prep_snippets'))
@@ -1413,7 +1409,7 @@ def del_var(var_id):
                 return redirect(url_for('list_vars'))
             used_in_snippet = Code_Snippet_Var.query.filter_by(var_id=var_id).first()
             if used_in_snippet:
-                flash("Cette variable prédéfinie est utilisée dans un snippet. Elle ne peut pas être supprimée.")
+                flash("Cette variable prédéfinie est utilisée dans un Extrait de Code. Elle ne peut pas être supprimée.")
                 return redirect(url_for('list_vars'))
             return render_template('del_var.html', form=form, name=var_name)
         else:
@@ -1493,7 +1489,7 @@ def add_snip_var(snip_id, var_id):
     if not logged_in():
         return redirect(url_for('login'))
     if db_add_snip_var(snip_id, var_id):
-        flash('La nouvelle variable est ajoutée au snippet.')
+        flash("La nouvelle variable est ajoutée à l'Extrait de Code.")
     else:
         flash('Une erreur de base de données est survenue.')
         abort(500)
@@ -1575,7 +1571,7 @@ def add_snippet():
         snip_desc = request.form['snip_desc']
         snip_code = request.form['snip_code']
         if db_add_snippet(snip_name, snip_desc, snip_code):
-            flash('Le nouveau bout de code est ajouté.')
+            flash('Le nouvel Extrait de Code est ajouté.')
             return redirect(url_for('list_snippets_short'))
         else:
             flash('Une erreur de base de données est survenue.')
@@ -1594,7 +1590,7 @@ def upd_snippet(snip_id):
         snip_desc = form.snip_desc.data
         snip_code = form.snip_code.data
         if db_upd_snippet(snip_id, snip_name, snip_desc, snip_code):
-            flash("Le bout de code a été modifié.")
+            flash("L'Extrait de Code a été modifié.")
         else:
             flash("Quelque chose n'a pas fonctionné.")
         return redirect(url_for('list_snippets_short'))
@@ -1623,7 +1619,7 @@ def del_snippet(snip_id):
     if form.validate_on_submit():
         app.logger.debug('Deleting a snippet')
         if db_del_snippet(snip_id):
-            flash("Le bout de code a été effacé.")
+            flash("L'Extrait de Code a été effacé.")
         else:
             flash("Quelque chose n'a pas fonctionné.")
         return redirect(url_for('list_snippets_short'))
@@ -1633,7 +1629,7 @@ def del_snippet(snip_id):
             snip_name = snippet.snip_name
             has_prep_snippets = Prepared_Snippet.query.filter_by(snip_id=snip_id).first()
             if has_prep_snippets:
-                flash("Ce snippet est utilisé (Snippets Préparés). Il ne peut pas être supprimé.")
+                flash("Cet Extrait de Code est utilisé (Extraits de Code Préparés). Il ne peut pas être supprimé.")
                 return redirect(url_for('list_snippets_short'))
             return render_template('del_snippet.html', form=form, name=snip_name)
         else:
@@ -2170,7 +2166,8 @@ def db_add_snippet(snip_name, snip_desc, snip_code):
         for var_name in list_vars:
             var_id = db_exists_pred_var(var_name)
             if var_id is None:
-                flash("Cette variable n'est pas prédéfinie: " + var_name + ". N'oubliez pas de la définir et de l'ajouter au snippet.")
+                flash("Cette variable n'est pas prédéfinie: " + var_name +
+                      ". N'oubliez pas de la définir et de l'ajouter à l'Extrait de Code.")
             else:
                 snip_var = Code_Snippet_Var(snippet.snip_id, var_id)
                 db.session.add(snip_var)
@@ -2211,7 +2208,8 @@ def db_upd_snippet(snip_id, snip_name, snip_desc, snip_code):
             var_id = db_exists_pred_var(var_name)
             if var_id is None:
                 app.logger.debug("Variable prédéfine non trouvée: ")
-                flash("Cette variable n'est pas prédéfinie: " + var_name + ". N'oubliez pas de la définir et de l'ajouter au snippet.")
+                flash("Cette variable n'est pas prédéfinie: " + var_name +
+                      ". N'oubliez pas de la définir et de l'ajouter à l'Extrait de Code.")
             else:
                 app.logger.debug("Variable prédéfinie trouvée. Il faut ajouter (snip_id, var_id)" + str(snip_id) + ":" + str(var_id))
                 snip_var = Code_Snippet_Var.query.filter_by(snip_id=snip_id, var_id=var_id).first()

@@ -2,7 +2,7 @@
 {% block page_content %}
 <div class="container">
     <div class="page-header">
-        <h1>Snippet Préparé: {{ p_snip.prep_snip_name }}</h1>
+        <h1>Extrait de Code Préparé: {{ p_snip.prep_snip_name }}</h1>
     </div>
 
     <div class = "panel panel-primary">
@@ -14,7 +14,7 @@
             {{ p_snip.prep_snip_desc }}
         </div>
     </div>
-    <h2>Variables utilisées dans ce snippet</h2>
+    <h2>Variables utilisées dans cet Extrait de Code Préparé</h2>
     {% if p_snip_vars %}
         <table class="table table-bordered">
             <thead>
@@ -33,7 +33,7 @@
             </tbody>
         </table>
     {% else %}
-        Aucune variable utilisée dans ce snippet.
+        Aucune variable utilisée dans cet Extrait de Code.
     {% endif %}
 
     <h2>Code:</h2>

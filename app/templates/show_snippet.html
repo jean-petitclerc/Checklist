@@ -2,7 +2,7 @@
 {% block page_content %}
 <div class="container">
     <div class="page-header">
-        <h1>Snippet: {{ snippet['snip_name'] }}</h1>
+        <h1>Extrait de Code: {{ snippet['snip_name'] }}</h1>
     </div>
     <div class = "panel panel-primary">
          <div class="panel-body">
@@ -12,7 +12,7 @@
               <pre><code>{{ snippet['snip_code'] }}</code></pre>
          </div>
     </div>
-    <h2>Variables utilisées dans ce snippet</h2>
+    <h2>Variables utilisées dans cet Extrait de Code</h2>
     {% if snip_vars %}
         <table class="table table-bordered">
             <thead>
@@ -31,7 +31,7 @@
             </tbody>
         </table>
     {% else %}
-        Aucune variable utilisée dans ce snippet.
+        Aucune variable utilisée dans cet Extraits de Code.
     {% endif %}
 
     <p>Ajouté par: {{ snippet.audit_crt_user }} le {{ snippet.audit_crt_ts }}</p>

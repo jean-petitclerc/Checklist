@@ -2,7 +2,7 @@
 {% block page_content %}
 <div class="container">
     <div class="page-header">
-        <h1>Liste des Snippets Préparés</h1>
+        <h1>Liste des Extraits de Code Préparés</h1>
     </div>
     <p>
         {% if snippets %}
@@ -34,13 +34,13 @@
             </tbody>
         </table>
         {% else %}
-            <em>Il n'y a pas de snippet préparé dans la base de données</em>
+            <em>Il n'y a pas d'Extrait de Code Préparé dans la base de données</em>
             <p>
-                Aller dans la&nbsp<a href="{{ url_for('list_snippets_short') }}">liste des snippets</a>&nbsp pour en ajouter un.
+                Aller dans la&nbsp<a href="{{ url_for('list_snippets_short') }}">liste des Extraits de Code</a>&nbsp pour en ajouter un.
             </p>
         {% endif %}
     </p>
-    <a href="{{ url_for('list_snippets_short') }}" class="btn btn-default">Aller à la liste pour préparer un snippet</a>
+    <a href="{{ url_for('list_snippets_short') }}" class="btn btn-default">Aller à la liste pour préparer un Extrait de Code</a>
     <a href="{{ url_for('index') }}" class="btn btn-default">Retour</a>
     <p>&nbsp;</p>
 </div>
