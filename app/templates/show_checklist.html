@@ -51,14 +51,14 @@
         {% for step in section['steps'] %}
             <h4>Étape {{ loop.index }}: {{ step['short'] }}</h4>
             <p>
-                <em>Description:</em>&nbsp;{{ step['detail'] }}<br>
+                <em>Description:</em>
+                <br><pre>{{ step['detail'] }}</pre>
                 <em>Usager:</em>&nbsp;{{ step['user'] }}<br>
                 {% if step['code'] %}
-                    <em>Code:</em><br>
-<pre>
-<code>{{ step['code'] }}</code>
-</pre>
+                    <em>Code:</em>
+                    <br><pre>{{ step['code'] }}</pre>
                 {% endif %}
+                <br>
             </p>
         {% else %}
             <p>Pas de step dans cette section</p>

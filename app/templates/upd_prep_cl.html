@@ -81,8 +81,6 @@
         {% for step in section['steps'] %}
             <h4>Étape {{ loop.index }}: {{ step['short'] }}</h4>
             <p>
-                <em>Description:</em>&nbsp;{{ step['detail'] }}<br>
-                <em>Usager:</em>&nbsp;{{ step['user'] }}<br>
                 <em>Status:</em>
                 {% if step['status'] == "D" %}  <span style="background-color: lime">Fait   </span>
                 {% elif step['status'] == 'N' %}<span style="background-color: cyan">À faire</span>
@@ -90,22 +88,19 @@
                 {% elif step['status'] == 'R' %}<span style="background-color: yellow">À revoir</span>
                 {% else %}Inconnu
                 {% endif %}
-                <br>
+                <br><br>
+                <em>Description:</em><pre>{{ step['detail'] }}</pre><br>
+                <em>Usager:</em>&nbsp&nbsp;{{ step['user'] }}<br><br>
                 {% if step['code'] %}
-                    <em>Code:</em><br>
-<pre>
-<code>{{ step['code'] }}</code>
-</pre>
+                    <em>Code:</em><pre><code>{{ step['code'] }}</code></pre><br>
                 {% endif %}
                 {% if step['rslt'] %}
-                    <em>Résultat:</em><br>
-<pre>
-<code>{{ step['rslt'] }}</code>
-</pre>
+                    <em>Résultat:</em><pre><code>{{ step['rslt'] }}</code></pre><br>
                 {% endif %}
                 <a href="{{ url_for('upd_prep_cl_step', prep_cl_step_id=step['prep_cl_step_id']) }}"
                     class="btn btn-default">Modifier cette étape</a>
             </p>
+            <br>
         {% else %}
             <p>Pas de step dans cette section</p>
         {% endfor %}

@@ -1346,11 +1346,12 @@ def upd_step(step_id):
             form.step_detail.data = st.step_detail
             form.step_user.data = st.step_user
             form.step_code.data = st.step_code
+            step_lines = len(st.step_code.splitlines())
             cl_vars = Checklist_Var.query.filter_by(checklist_id=checklist_id).all()
             for cl_v in cl_vars:
                 p_var = Predef_Var.query.get(cl_v.var_id)
                 cl_v.var_name = p_var.var_name
-            return render_template("upd_step.html", form=form, section_id=section_id, step_id=step_id, cl_vars=cl_vars)
+            return render_template("upd_step.html", form=form, section_id=section_id, step_id=step_id, cl_vars=cl_vars, step_lines=step_lines)
         else:
             flash("L'information n'a pas pu être retrouvée.")
             return redirect(url_for('upd_section', section_id=section_id))
