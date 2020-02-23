@@ -1,0 +1,45 @@
+\documentclass[letterpaper]{report}
+\begin{document}
+\title{ {{ cl.prep_cl_name }} }
+\maketitle
+\section{Variables utilisées dans cette checklist}
+{% if cl_vars %}
+\begin{table}[htbp]
+\begin{tabular}{|l|l|}
+\hline
+Nom de Variable & Valeur \\
+\hline
+    {% for cl_v in  cl_vars %}
+{{ cl_v['name'] }} & {{ cl_v['value'] }} \\
+\hline
+    {% endfor %}
+\end{tabular}
+\end{table}
+{% else %}
+    Aucune variable utilisée dans cette checklist.
+{% endif %}
+\section{Sections}
+{% if sections %}
+    {% for section in  sections %}
+\subsection{ {{ section['name'] }} }
+{{ section['detail'] }}
+        {% for step in section['steps'] %}
+\subsubsection{ {{ step['short'] }} }
+{{ step['detail'] }}\\
+Status: {{ step['status'] }}\\
+Usager: {{ step['user'] }}\\
+Code:\\
+\ttfamily {{ step['code'] }}
+\\
+\normalfont
+            {% if step['rslt'] %}
+Résultat:\\
+            {% endif %}
+        {% else %}
+Pas d'étape dans cette section.
+        {% endfor %}
+    {% endfor %}
+{% else %}
+    Aucune section dans cette checklist.
+{% endif %}
+\end{document}

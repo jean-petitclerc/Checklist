@@ -9,6 +9,7 @@ from flask_sqlalchemy import SQLAlchemy
 from contextlib import closing
 from datetime import datetime
 import re
+import os, subprocess
 
 # TODO Categorie et sous-categorie ou des tags
 # TODO Reviser les validators dans les formulaires
@@ -992,8 +993,6 @@ def show_prep_checklist(prep_cl_id):
         return redirect(url_for('login'))
     cl = Prepared_Checklist.query.get(prep_cl_id)
     if cl:
-        q_sections = Prepared_CL_Section.query.filter_by(prep_cl_id=prep_cl_id) \
-            .order_by(Prepared_CL_Section.section_seq).all()
         q_cl_vars = Prepared_Checklist_Var.query.filter_by(prep_cl_id=prep_cl_id).all()
         cl_vars = []
         for q_cl_v in q_cl_vars:
@@ -1003,6 +1002,8 @@ def show_prep_checklist(prep_cl_id):
             cl_var['value'] = q_cl_v.var_value
             cl_vars.append(cl_var)
 
+        q_sections = Prepared_CL_Section.query.filter_by(prep_cl_id=prep_cl_id) \
+            .order_by(Prepared_CL_Section.section_seq).all()
         sections = []
         for q_section in q_sections:
             section = dict()
@@ -1030,6 +1031,66 @@ def show_prep_checklist(prep_cl_id):
     else:
         flash("L'information n'a pas pu être retrouvée.")
         return redirect(url_for('list_prep_checklists'))
+
+
+@app.route('/print_prep_cl/<int:prep_cl_id>')
+def print_prep_cl(prep_cl_id):
+    if not logged_in():
+        return redirect(url_for('login'))
+    cl = Prepared_Checklist.query.get(prep_cl_id)
+    if cl:
+        q_cl_vars = Prepared_Checklist_Var.query.filter_by(prep_cl_id=prep_cl_id).all()
+        cl_vars = []
+        for q_cl_v in q_cl_vars:
+            cl_var = dict()
+            q_p_var = Predef_Var.query.get(q_cl_v.var_id)
+            cl_var['name'] = q_cl_v.var_name
+            cl_var['value'] = q_cl_v.var_value
+            cl_vars.append(cl_var)
+        q_sections = Prepared_CL_Section.query.filter_by(prep_cl_id=prep_cl_id) \
+            .order_by(Prepared_CL_Section.section_seq).all()
+        sections = []
+        for q_section in q_sections:
+            section = dict()
+            section['id'] = q_section.section_id
+            section['seq'] = q_section.section_seq
+            section['name'] = q_section.section_name
+            section['detail'] = q_section.section_detail
+            q_steps = Prepared_CL_Step.query.filter_by(prep_cl_sect_id=q_section.prep_cl_sect_id) \
+                .order_by(Prepared_CL_Step.step_seq).all()
+            steps = []
+            for q_step in q_steps:
+                step = dict()
+                step['id'] = q_step.step_id
+                step['seq'] = q_step.step_seq
+                step['short'] = q_step.step_short
+                step['detail'] = q_step.step_detail
+                step['user'] = q_step.step_user
+                step['code'] = q_step.step_code
+                step['rslt'] = q_step.step_rslt
+                step['status'] = q_step.status_ind
+                steps.append(step)
+            section['steps'] = steps
+            sections.append(section)
+
+#        with open("latex/somefile.md", 'w') as latex_file:
+#            latex_src = render_template("print_prep_checklist.md", cl=cl, cl_vars=cl_vars, sections=sections)
+#            latex_file.write(latex_src)
+#            print(latex_src)
+#            latex_file.close()
+#        sp = subprocess.call('/usr/bin/pandoc latex/somefile.md -o latex/somefile.pdf --from markdown --template eisvogel --listings', shell=True)
+        return render_template("print_prep_checklist.html", cl=cl, cl_vars=cl_vars, sections=sections)
+    else:
+        flash("L'information n'a pas pu être retrouvée.")
+        return redirect(url_for('list_prep_checklists'))
+
+
+def latext_escape(chaine):
+    if chaine is not None:
+        chaine = chaine.replace('<', '$<$').replace('>', '$>$').replace('_', '\_').replace('#', '\#')\
+            .replace("\n", '\\\\') #.replace('"', '\"')
+        print(chaine)
+    return chaine
 
 
 def replace_vars_in_code(code, vars):
