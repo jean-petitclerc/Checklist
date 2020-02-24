@@ -9,7 +9,8 @@ from flask_sqlalchemy import SQLAlchemy
 from contextlib import closing
 from datetime import datetime
 import re
-import os, subprocess
+import os
+import subprocess
 
 # TODO Categorie et sous-categorie ou des tags
 # TODO Reviser les validators dans les formulaires
@@ -835,7 +836,8 @@ def upd_prep_snippet(prep_snip_id):
             form.prep_snip_rslt.data = p_snip.prep_snip_rslt
             p_snip_vars = Prepared_Snippet_Var.query.filter_by(prep_snip_id=prep_snip_id) \
                 .order_by(Prepared_Snippet_Var.var_name).all()
-            return render_template("upd_prep_snip.html", form=form, p_snip=p_snip, p_snip_vars=p_snip_vars, snippet=snippet)
+            return render_template("upd_prep_snip.html", form=form, p_snip=p_snip, p_snip_vars=p_snip_vars,
+                                   snippet=snippet)
         else:
             flash("L'information n'a pas pu être retrouvée.")
             return redirect(url_for('list_snippets_short'))
@@ -850,7 +852,7 @@ def upd_prep_snippet_var(prep_snip_var_id):
     if form.validate_on_submit():
         app.logger.debug('Updating a prepared snippet var')
         var_value = form.var_value.data
-        if db_upd_prep_snip_var(prep_snip_var_id, var_value, prep_snip_id):
+        if db_upd_prep_snip_var(prep_snip_var_id, var_value):
             flash("La valeur a été assignée.")
         else:
             flash("Quelque chose n'a pas fonctionné.")
@@ -927,7 +929,7 @@ def show_prep_snippet(prep_snip_id):
     if not logged_in():
         return redirect(url_for('login'))
     p_snip = Prepared_Snippet.query.get(prep_snip_id)
-    #app.logger.debug('Prep_Snippet: ' + str(p_snip))
+    # app.logger.debug('Prep_Snippet: ' + str(p_snip))
     if p_snip:
         q_snip_vars = Prepared_Snippet_Var.query.filter_by(prep_snip_id=prep_snip_id).all()
         p_snip_vars = []
@@ -997,7 +999,7 @@ def show_prep_checklist(prep_cl_id):
         cl_vars = []
         for q_cl_v in q_cl_vars:
             cl_var = dict()
-            q_p_var = Predef_Var.query.get(q_cl_v.var_id)
+            # q_p_var = Predef_Var.query.get(q_cl_v.var_id)
             cl_var['name'] = q_cl_v.var_name
             cl_var['value'] = q_cl_v.var_value
             cl_vars.append(cl_var)
@@ -1043,7 +1045,7 @@ def print_prep_cl(prep_cl_id):
         cl_vars = []
         for q_cl_v in q_cl_vars:
             cl_var = dict()
-            q_p_var = Predef_Var.query.get(q_cl_v.var_id)
+            # q_p_var = Predef_Var.query.get(q_cl_v.var_id)
             cl_var['name'] = q_cl_v.var_name
             cl_var['value'] = q_cl_v.var_value
             cl_vars.append(cl_var)
@@ -1078,7 +1080,8 @@ def print_prep_cl(prep_cl_id):
 #            latex_file.write(latex_src)
 #            print(latex_src)
 #            latex_file.close()
-#        sp = subprocess.call('/usr/bin/pandoc latex/somefile.md -o latex/somefile.pdf --from markdown --template eisvogel --listings', shell=True)
+#        sp = subprocess.call('/usr/bin/pandoc latex/somefile.md -o latex/somefile.pdf --from markdown
+#                             --template eisvogel --listings', shell=True)
         return render_template("print_prep_checklist.html", cl=cl, cl_vars=cl_vars, sections=sections)
     else:
         flash("L'information n'a pas pu être retrouvée.")
@@ -1088,13 +1091,13 @@ def print_prep_cl(prep_cl_id):
 def latext_escape(chaine):
     if chaine is not None:
         chaine = chaine.replace('<', '$<$').replace('>', '$>$').replace('_', '\_').replace('#', '\#')\
-            .replace("\n", '\\\\') #.replace('"', '\"')
+            .replace("\n", '\\\\')  # .replace('"', '\"')
         print(chaine)
     return chaine
 
 
-def replace_vars_in_code(code, vars):
-    for cl_v in vars:
+def replace_vars_in_code(code, cl_vars):
+    for cl_v in cl_vars:
         if cl_v['value'] is not None:
             code = code.replace(cl_v['name'], cl_v['value'])
     return code
@@ -1126,7 +1129,7 @@ def upd_prep_cl(prep_cl_id):
                 .order_by(Prepared_CL_Section.section_seq).all()
             sections = []
             for q_section in q_sections:
-                #app.logger.debug('Section:' + str(q_section.prep_cl_sect_id) + ' ' + q_section.section_name)
+                # app.logger.debug('Section:' + str(q_section.prep_cl_sect_id) + ' ' + q_section.section_name)
                 section = dict()
                 section['prep_cl_sect_id'] = q_section.prep_cl_sect_id
                 section['seq'] = q_section.section_seq
@@ -1136,7 +1139,7 @@ def upd_prep_cl(prep_cl_id):
                     .order_by(Prepared_CL_Step.step_seq).all()
                 steps = []
                 for q_step in q_steps:
-                    #app.logger.debug('Step:' + str(q_step.prep_cl_step_id) + ' ' + q_step.step_short)
+                    # app.logger.debug('Step:' + str(q_step.prep_cl_step_id) + ' ' + q_step.step_short)
                     step = dict()
                     step['prep_cl_step_id'] = q_step.prep_cl_step_id
                     step['seq'] = q_step.step_seq
@@ -1412,7 +1415,8 @@ def upd_step(step_id):
             for cl_v in cl_vars:
                 p_var = Predef_Var.query.get(cl_v.var_id)
                 cl_v.var_name = p_var.var_name
-            return render_template("upd_step.html", form=form, section_id=section_id, step_id=step_id, cl_vars=cl_vars, step_lines=step_lines)
+            return render_template("upd_step.html", form=form, section_id=section_id, step_id=step_id,
+                                   cl_vars=cl_vars, step_lines=step_lines)
         else:
             flash("L'information n'a pas pu être retrouvée.")
             return redirect(url_for('upd_section', section_id=section_id))
@@ -1471,7 +1475,8 @@ def del_var(var_id):
                 return redirect(url_for('list_vars'))
             used_in_snippet = Code_Snippet_Var.query.filter_by(var_id=var_id).first()
             if used_in_snippet:
-                flash("Cette variable prédéfinie est utilisée dans un Extrait de Code. Elle ne peut pas être supprimée.")
+                flash("Cette variable prédéfinie est utilisée dans un Extrait de Code. " +
+                      "Elle ne peut pas être supprimée.")
                 return redirect(url_for('list_vars'))
             return render_template('del_var.html', form=form, name=var_name)
         else:
@@ -1612,7 +1617,7 @@ def show_snippet(snip_id):
         for q_snip_var in q_snip_vars:
             snip_var = dict()
             q_p_var = Predef_Var.query.get(q_snip_var.var_id)
-            #app.logger.debug('var name: ' + q_p_var.var_name)
+            # app.logger.debug('var name: ' + q_p_var.var_name)
             snip_var['name'] = q_p_var.var_name
             snip_var['desc'] = q_p_var.var_desc
             snip_vars.append(snip_var)
@@ -1885,9 +1890,11 @@ def db_add_step(checklist_id, section_id, step_seq, step_short, step_detail, ste
         for var_name in list_vars:
             var_id = db_exists_pred_var(var_name)
             if var_id is None:
-                flash("Cette variable n'est pas prédéfinie: " + var_name + ". N'oubliez pas de la définir et de l'ajouter à la checklist.")
+                flash("Cette variable n'est pas prédéfinie: " + var_name +
+                      ". N'oubliez pas de la définir et de l'ajouter à la checklist.")
             else:
-                app.logger.debug("Variable prédéfinie trouvée. Il faut ajouter (checklist_id:var_id)" + str(checklist_id) + ":" + str(var_id))
+                app.logger.debug("Variable prédéfinie trouvée. Il faut ajouter (checklist_id:var_id)" +
+                                 str(checklist_id) + ":" + str(var_id))
                 cl_var = Checklist_Var.query.filter_by(checklist_id=checklist_id, var_id=var_id).first()
                 if not cl_var:
                     app.logger.debug("On essaie de l'ajouter...")
@@ -1931,9 +1938,11 @@ def db_upd_step(step_id, step_seq, step_short, step_detail, step_user, step_code
         for var_name in list_vars:
             var_id = db_exists_pred_var(var_name)
             if var_id is None:
-                flash("Cette variable n'est pas prédéfinie: " + var_name + ". N'oubliez pas de la définir et de l'ajouter à la checklist.")
+                flash("Cette variable n'est pas prédéfinie: " + var_name +
+                      ". N'oubliez pas de la définir et de l'ajouter à la checklist.")
             else:
-                app.logger.debug("Variable prédéfinie trouvée. Il faut ajouter (checklist_id:var_id)" + str(checklist_id) + ":" + str(var_id))
+                app.logger.debug("Variable prédéfinie trouvée. Il faut ajouter (checklist_id:var_id)" +
+                                 str(checklist_id) + ":" + str(var_id))
                 cl_var = Checklist_Var.query.filter_by(checklist_id=checklist_id, var_id=var_id).first()
                 if not cl_var:
                     app.logger.debug("On essaie de l'ajouter...")
@@ -1980,9 +1989,9 @@ def db_add_prep_cl(prep_cl_name, prep_cl_desc, checklist_id):
             p_cl_sect = Prepared_CL_Section(p_cl.prep_cl_id, cl_sect.section_id, cl_sect.section_seq,
                                             cl_sect.section_name, cl_sect.section_detail)
             db.session.add(p_cl_sect)
-            cl_steps = Step.query.filter_by(checklist_id=checklist_id, section_id=cl_sect.section_id, deleted_ind='N').all()
+            cl_steps = Step.query.filter_by(checklist_id=checklist_id, section_id=cl_sect.section_id,
+                                            deleted_ind='N').all()
             for cl_step in cl_steps:
-                #     def __init__(self, prep_cl_sect_id, step_id, step_seq, step_short, step_detail, step_user, step_code):
                 p_cl_step = Prepared_CL_Step(p_cl_sect.prep_cl_sect_id, cl_step.step_id, cl_step.step_seq,
                                              cl_step.step_short, cl_step.step_detail, cl_step.step_user,
                                              cl_step.step_code)
@@ -2017,23 +2026,24 @@ def db_ref_prep_cl(prep_cl_id):
             p_cl_var = Prepared_Checklist_Var(p_cl.prep_cl_id, cl_var.var_id, var_name, var_value)
             db.session.add(p_cl_var)
         p_cl_sections = Prepared_CL_Section.query.filter_by(prep_cl_id=prep_cl_id).all()
-        #app.logger.debug('Deleting sections')
+        # app.logger.debug('Deleting sections')
         for p_cl_sect in p_cl_sections:
             p_cl_steps = Prepared_CL_Step.query.filter_by(prep_cl_sect_id=p_cl_sect.prep_cl_sect_id).all()
-            #app.logger.debug('Deleting steps')
+            # app.logger.debug('Deleting steps')
             for p_cl_step in p_cl_steps:
-                #app.logger.debug('Deleting step: ' + p_cl_step.step_short)
+                # app.logger.debug('Deleting step: ' + p_cl_step.step_short)
                 db.session.delete(p_cl_step)
-            #app.logger.debug('Deleting section: ' + p_cl_sect.section_name)
+            # app.logger.debug('Deleting section: ' + p_cl_sect.section_name)
             db.session.delete(p_cl_sect)
-        #app.logger.debug('Delete of sections and steps done')
+        # app.logger.debug('Delete of sections and steps done')
         cl_sections = Section.query.filter_by(checklist_id=p_cl.checklist_id, deleted_ind='N').all()
         for cl_sect in cl_sections:
             app.logger.debug('Adding section: ' + cl_sect.section_name)
             p_cl_sect = Prepared_CL_Section(p_cl.prep_cl_id, cl_sect.section_id, cl_sect.section_seq,
                                             cl_sect.section_name, cl_sect.section_detail)
             db.session.add(p_cl_sect)
-            cl_steps = Step.query.filter_by(checklist_id=p_cl.checklist_id, section_id=cl_sect.section_id, deleted_ind='N').all()
+            cl_steps = Step.query.filter_by(checklist_id=p_cl.checklist_id, section_id=cl_sect.section_id,
+                                            deleted_ind='N').all()
             for cl_step in cl_steps:
                 app.logger.debug('Adding step: ' + cl_step.step_short)
                 step_code = cl_step.step_code
@@ -2088,7 +2098,7 @@ def db_upd_prep_cl_app_vars(prep_cl_id):
                     for p_cl_var in p_cl_vars:
                         if p_cl_var.var_value is not None:
                             new_code = new_code.replace(p_cl_var.var_name, p_cl_var.var_value)
-                    p_cl_step.step_code = new_code + "\n#--Version précédente--------------------\n" + p_cl_step.step_code
+                    p_cl_step.step_code = new_code + "\n#--Version précédente--\n" + p_cl_step.step_code
         db.session.commit()
     except Exception as e:
         app.logger.error('DB Error' + str(e))
@@ -2111,6 +2121,7 @@ def db_upd_prep_cl_step(prep_cl_step_id, step_detail, step_user, step_code, step
     try:
         cl_step = Prepared_CL_Step.query.get(prep_cl_step_id)
         cl_step.step_detail = step_detail
+        cl_step.step_user = step_user
         cl_step.step_code = step_code
         cl_step.step_rslt = step_rslt
         cl_step.status_ind = status_ind
@@ -2273,9 +2284,9 @@ def db_upd_snippet(snip_id, snip_name, snip_desc, snip_code):
                 flash("Cette variable n'est pas prédéfinie: " + var_name +
                       ". N'oubliez pas de la définir et de l'ajouter à l'Extrait de Code.")
             else:
-                app.logger.debug("Variable prédéfinie trouvée. Il faut ajouter (snip_id, var_id)" + str(snip_id) + ":" + str(var_id))
+                app.logger.debug("Variable prédéfinie trouvée. Il faut ajouter (snip_id, var_id)" + str(snip_id) +
+                                 ":" + str(var_id))
                 snip_var = Code_Snippet_Var.query.filter_by(snip_id=snip_id, var_id=var_id).first()
-                #snip_var = snip_vars[0]
                 if not snip_var:
                     app.logger.debug("On essaie de l'ajouter...")
                     snip_var = Code_Snippet_Var(snip_id, var_id)
@@ -2329,7 +2340,8 @@ def db_ref_prep_snip(prep_snip_id):
                 var_value = ''
             p_snip_var = Prepared_Snippet_Var(prep_snip_id, snip_var.var_id, var_name, var_value)
             db.session.add(p_snip_var)
-        p_snip.prep_snip_code = p_snip.prep_snip_code + "\n#--Version précédente--------------------\n" + s_prep_snip_code
+        p_snip.prep_snip_code = p_snip.prep_snip_code + "\n#--Version précédente--------------------\n" \
+            + s_prep_snip_code
         db.session.commit()
     except Exception as e:
         app.logger.error('DB Error' + str(e))
@@ -2351,7 +2363,7 @@ def db_upd_prep_snip(prep_snip_id, prep_snip_name, prep_snip_desc, prep_snip_cod
     return True
 
 
-def db_upd_prep_snip_var(prep_snip_var_id, var_value, prep_snip_id):
+def db_upd_prep_snip_var(prep_snip_var_id, var_value):
     try:
         p_snip_var = Prepared_Snippet_Var.query.get(prep_snip_var_id)
         p_snip_var.var_value = var_value
