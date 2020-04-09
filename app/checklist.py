@@ -17,6 +17,8 @@ import subprocess
 # TODO Private variables
 # TODO Etapes optionelles
 # TODO print pdf
+# TODO Prévoir les erreurs de duplicates
+# TODO Blueprint
 
 app = Flask(__name__)
 manager = Manager(app)
