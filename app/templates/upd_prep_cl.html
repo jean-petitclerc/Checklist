@@ -20,7 +20,40 @@
     <div class="page-header">
         <h1>Modifier une Checklist Préparée</h1>
     </div>
+    <h2>Liens Rapides</h2>
+    <table class="table table-bordered">
+        <thead>
+            <tr>
+                <th>Section</th>
+                <th>Étape</th>
+                <th class="text-center">Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for section in sections %}
+                {% for step in section['steps'] %}
+                    <tr>
+                        <td>
+                            <a href="#Section-{{ section['seq'] }}">{{ section['name'] }}</a>
+                        </td>
+                        <td>
+                            <a href="#Step-{{ section['seq'] }}-{{ step['seq'] }}">{{ step['short'] }}</a>
+                        </td>
+                        <td class="text-center">
+                            {% if step['status'] == "D" %}  <span style="background-color: lime">Fait   </span>
+                            {% elif step['status'] == 'N' %}<span style="background-color: cyan">À faire</span>
+                            {% elif step['status'] == 'E' %}<span style="background-color: red">Erreur </span>
+                            {% elif step['status'] == 'R' %}<span style="background-color: yellow">À revoir</span>
+                            {% else %}Inconnu
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+            {% endfor %}
+        </tbody>
+    </table>
 
+    <h2>Éléments modifiables de la Checklist Préparée</h2>
     <form class="form" method="post" role="form">
         {{ form.hidden_tag() }}
         {{ wtf.form_errors(form, hiddens="only") }}
@@ -66,6 +99,7 @@
 
     <h2>Sections:</h2>
     {% for section in sections %}
+        <a name="Section-{{ section['seq'] }}"></a>
         <h3>Section {{ loop.index }}: {{ section['name'] }}</h3>
         <div class = "panel panel-primary">
             <div class = "panel-heading">
@@ -79,6 +113,7 @@
            class="btn btn-default">Modifier cette section</a>
         <h3>Étapes</h3>
         {% for step in section['steps'] %}
+            <a name="Step-{{ section['seq'] }}-{{ step['seq'] }}"></a>
             <h4>Étape {{ loop.index }}: {{ step['short'] }}</h4>
             <p>
                 <em>Status:</em>
